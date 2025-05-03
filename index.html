@@ -2,65 +2,122 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Workspace Documentation</title>
   <style>
     body {
       margin: 0;
       font-family: sans-serif;
-      text-align: center;
       background-color: #111;
       color: white;
+      overflow: hidden;
     }
-    video {
+
+    #video-container {
+      position: relative;
       width: 100%;
       max-height: 70vh;
+    }
+
+    video {
+      width: 100%;
       object-fit: cover;
     }
+
+    #marker {
+      position: absolute;
+      border: 3px dashed lime;
+      width: 150px;
+      height: 150px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 2;
+      pointer-events: none;
+    }
+
     #overlay {
       position: absolute;
-      top: 10px;
+      top: 0;
       left: 0;
       width: 100%;
       text-align: center;
-      z-index: 10;
+      z-index: 3;
+      background: rgba(0,0,0,0.5);
       font-size: 1.2em;
-    }
-    #landscape-warning {
-      color: yellow;
-      background: black;
       padding: 10px;
     }
+
     #status {
-      margin-top: 1em;
-      font-size: 1.5em;
+      margin-top: 0.5em;
     }
-    #step-back-warning {
-      color: orange;
-      font-size: 1em;
+
+    #captures {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .capture-slot {
+      flex: 1;
+      min-width: 100px;
+      text-align: center;
+      margin: 10px;
+    }
+
+    .capture-slot img {
+      max-width: 100%;
+      border: 2px solid white;
+    }
+
+    #landscape-warning {
+      color: yellow;
+      font-weight: bold;
     }
   </style>
 </head>
 <body>
-  <div id="overlay">
-    <div id="landscape-warning" style="display: none;">
-      📱 Please rotate your phone to landscape for a better view of your workspace.
-    </div>
-    <div id="status">🔍 Looking for QR code...</div>
-    <div id="step-back-warning" style="display: none;">
-      ⬅️ Please step back to show more of your workspace.
+  <div id="video-container">
+    <video id="video" autoplay muted playsinline></video>
+    <div id="marker"></div>
+    <div id="overlay">
+      <div id="landscape-warning" style="display: none;">
+        📱 Please rotate your phone to landscape for a better view.
+      </div>
+      <div id="status">🔍 Align QR code in the center marker...</div>
     </div>
   </div>
 
-  <video id="video" autoplay muted playsinline></video>
+  <div id="captures">
+    <div class="capture-slot">
+      <strong>Left View</strong><br/>
+      <img id="left-img" src="" alt="Left view not yet captured"/>
+    </div>
+    <div class="capture-slot">
+      <strong>Center View</strong><br/>
+      <img id="center-img" src="" alt="Center view not yet captured"/>
+    </div>
+    <div class="capture-slot">
+      <strong>Right View</strong><br/>
+      <img id="right-img" src="" alt="Right view not yet captured"/>
+    </div>
+  </div>
 
   <script type="module">
     import QrScanner from "https://cdn.jsdelivr.net/npm/qr-scanner@1.4.2/qr-scanner.min.js";
 
     const video = document.getElementById('video');
     const status = document.getElementById('status');
-    const stepBackWarning = document.getElementById('step-back-warning');
+    const marker = document.getElementById('marker');
     const correctCode = "1234";
+
+    let currentStage = 'center'; // 'center' → 'left' → 'right'
+    const captured = {
+      left: false,
+      center: false,
+      right: false
+    };
 
     function checkOrientation() {
       const warning = document.getElementById('landscape-warning');
@@ -70,51 +127,88 @@
         warning.style.display = 'none';
       }
     }
+
     window.addEventListener('resize', checkOrientation);
     checkOrientation();
 
-    QrScanner.hasCamera().then(hasCamera => {
-      if (!hasCamera) {
-        status.textContent = "🚫 No camera found.";
+    function moveMarker(stage) {
+      switch (stage) {
+        case 'left':
+          marker.style.left = '25%';
+          marker.style.top = '50%';
+          marker.style.transform = 'translate(-50%, -50%)';
+          status.textContent = '📸 Align QR on the left marker...';
+          break;
+        case 'center':
+          marker.style.left = '50%';
+          marker.style.top = '50%';
+          marker.style.transform = 'translate(-50%, -50%)';
+          status.textContent = '📸 Align QR in the center marker...';
+          break;
+        case 'right':
+          marker.style.left = '75%';
+          marker.style.top = '50%';
+          marker.style.transform = 'translate(-50%, -50%)';
+          status.textContent = '📸 Align QR on the right marker...';
+          break;
       }
-    });
+    }
+
+    function captureImage(stage) {
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0);
+      const dataUrl = canvas.toDataURL('image/png');
+      document.getElementById(`${stage}-img`).src = dataUrl;
+      captured[stage] = true;
+    }
 
     const scanner = new QrScanner(video, (result) => {
       const text = result.data.trim();
-      console.log("QR detected:", text);
-
-      // Check size
       const box = result.cornerPoints;
       const width = Math.hypot(box[0].x - box[1].x, box[0].y - box[1].y);
       const height = Math.hypot(box[1].x - box[2].x, box[1].y - box[2].y);
-      const videoWidth = video.videoWidth;
-      const videoHeight = video.videoHeight;
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
 
-      const widthRatio = width / videoWidth;
-      const heightRatio = height / videoHeight;
-
+      const widthRatio = width / vw;
+      const heightRatio = height / vh;
       const isFarEnough = widthRatio < 0.3 && heightRatio < 0.3;
 
       if (text === correctCode && isFarEnough) {
-        status.textContent = "✅ QR code detected and valid!";
-        stepBackWarning.style.display = "none";
-        // Stop scanner to freeze the frame
-        scanner.stop();
-      } else if (text === correctCode && !isFarEnough) {
-        status.textContent = "⚠️ QR code too close.";
-        stepBackWarning.style.display = "block";
+        if (!captured[currentStage]) {
+          captureImage(currentStage);
+          status.textContent = `✅ ${currentStage.charAt(0).toUpperCase() + currentStage.slice(1)} view captured.`;
+
+          if (currentStage === 'center') {
+            currentStage = 'left';
+            moveMarker('left');
+          } else if (currentStage === 'left') {
+            currentStage = 'right';
+            moveMarker('right');
+          } else if (currentStage === 'right') {
+            status.textContent = "🎉 All views captured!";
+            scanner.stop();
+            document.getElementById('video-container').style.display = 'none';
+          }
+        }
+      } else if (text === correctCode) {
+        status.textContent = "⚠️ Please step back to show more of the workspace.";
       } else {
         status.textContent = "❌ QR not detected or invalid.";
-        stepBackWarning.style.display = "none";
       }
     }, {
       returnDetailedScanResult: true
     });
 
     QrScanner.listCameras().then(cameras => {
-      const preferredCam = cameras.find(cam => cam.label.toLowerCase().includes('back')) || cameras[0];
-      scanner.start(preferredCam?.id);
+      const backCam = cameras.find(cam => cam.label.toLowerCase().includes('back')) || cameras[0];
+      scanner.start(backCam?.id);
     });
+
+    moveMarker(currentStage);
   </script>
 </body>
 </html>
