@@ -1,139 +1,120 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Workspace Documentation</title>
-  <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
     body {
+      margin: 0;
       font-family: sans-serif;
       text-align: center;
-    }
-    #camera {
-      width: 100%;
-      max-width: 400px;
-      margin: auto;
-    }
-    #message {
-      margin: 10px;
-      font-weight: bold;
-    }
-    #instructions {
-      margin: 15px;
+      background-color: #111;
+      color: white;
     }
     video {
       width: 100%;
+      max-height: 70vh;
+      object-fit: cover;
     }
-    canvas {
-      display: none;
+    #overlay {
+      position: absolute;
+      top: 10px;
+      left: 0;
+      width: 100%;
+      text-align: center;
+      z-index: 10;
+      font-size: 1.2em;
     }
-    #snapshots img {
-      width: 100px;
-      margin: 5px;
+    #landscape-warning {
+      color: yellow;
+      background: black;
+      padding: 10px;
+    }
+    #status {
+      margin-top: 1em;
+      font-size: 1.5em;
+    }
+    #step-back-warning {
+      color: orange;
+      font-size: 1em;
     }
   </style>
 </head>
 <body>
-  <h1>Document Your Workspace</h1>
-  <div id="instructions">Please hold your phone so the QR code is <b><span id="pose">centered</span></b> in view and step back to show your full workspace.</div>
-  <div id="camera"></div>
-  <div id="message"></div>
-  <button id="capture" disabled>Capture Photo</button>
-  <div id="snapshots"></div>
+  <div id="overlay">
+    <div id="landscape-warning" style="display: none;">
+      📱 Please rotate your phone to landscape for a better view of your workspace.
+    </div>
+    <div id="status">🔍 Looking for QR code...</div>
+    <div id="step-back-warning" style="display: none;">
+      ⬅️ Please step back to show more of your workspace.
+    </div>
+  </div>
 
-  <script>
-    const EXPECTED_QR = "1234";
-    const REQUIRED_CAPTURES = ["centered", "left", "right"];
-    let currentCapture = 0;
-    let poses = ["centered", "left", "right"];
-    let capturedImages = [];
+  <video id="video" autoplay muted playsinline></video>
 
-    const html5QrCode = new Html5Qrcode("camera");
-    const config = { fps: 10, qrbox: 250 };
+  <script type="module">
+    import QrScanner from "https://cdn.jsdelivr.net/npm/qr-scanner@1.4.2/qr-scanner.min.js";
 
-    function updatePose() {
-      if (currentCapture < poses.length) {
-        document.getElementById("pose").textContent = poses[currentCapture];
+    const video = document.getElementById('video');
+    const status = document.getElementById('status');
+    const stepBackWarning = document.getElementById('step-back-warning');
+    const correctCode = "1234";
+
+    function checkOrientation() {
+      const warning = document.getElementById('landscape-warning');
+      if (window.innerWidth < window.innerHeight) {
+        warning.style.display = 'block';
       } else {
-        document.getElementById("instructions").textContent = "✅ All required photos captured!";
-        document.getElementById("capture").disabled = true;
-        html5QrCode.stop();
+        warning.style.display = 'none';
       }
     }
+    window.addEventListener('resize', checkOrientation);
+    checkOrientation();
 
-    function isCentered(bounds, frameWidth, frameHeight) {
-      const centerX = frameWidth / 2;
-      const centerY = frameHeight / 2;
-      const qrCenterX = (bounds.topLeftCorner.x + bounds.bottomRightCorner.x) / 2;
-      const qrCenterY = (bounds.topLeftCorner.y + bounds.bottomRightCorner.y) / 2;
-      const tolerance = 0.2 * frameWidth;
-
-      return Math.abs(centerX - qrCenterX) < tolerance &&
-             Math.abs(centerY - qrCenterY) < tolerance;
-    }
-
-    function isSmallEnough(bounds, frameWidth, frameHeight) {
-      const qrWidth = bounds.bottomRightCorner.x - bounds.topLeftCorner.x;
-      const qrHeight = bounds.bottomRightCorner.y - bounds.topLeftCorner.y;
-      return (qrWidth / frameWidth < 0.5) && (qrHeight / frameHeight < 0.5);
-    }
-
-    function drawSnapshot(video) {
-      const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      return canvas.toDataURL("image/jpeg");
-    }
-
-    function handleScan(decodedText, result) {
-      if (decodedText === EXPECTED_QR && result && result.boundingBox) {
-        const video = document.querySelector("video");
-        const bounds = result.boundingBox;
-        const frameWidth = video.videoWidth;
-        const frameHeight = video.videoHeight;
-
-        const centered = isCentered(bounds, frameWidth, frameHeight);
-        const smallEnough = isSmallEnough(bounds, frameWidth, frameHeight);
-
-        if (centered && smallEnough) {
-          document.getElementById("message").textContent = "✅ QR detected and valid.";
-          document.getElementById("capture").disabled = false;
-        } else {
-          document.getElementById("message").textContent = "⚠️ QR is not centered or too large.";
-          document.getElementById("capture").disabled = true;
-        }
-      } else {
-        document.getElementById("message").textContent = "❌ QR not detected or invalid.";
-        document.getElementById("capture").disabled = true;
+    QrScanner.hasCamera().then(hasCamera => {
+      if (!hasCamera) {
+        status.textContent = "🚫 No camera found.";
       }
-    }
-
-    html5QrCode.start(
-      { facingMode: "environment" },
-      config,
-      handleScan
-    ).catch(err => {
-      console.error("Camera start error:", err);
-      document.getElementById("message").textContent = "Camera error. Please allow camera access.";
     });
 
-    document.getElementById("capture").addEventListener("click", () => {
-      const video = document.querySelector("video");
-      const imgData = drawSnapshot(video);
-      capturedImages.push(imgData);
+    const scanner = new QrScanner(video, (result) => {
+      const text = result.data.trim();
+      console.log("QR detected:", text);
 
-      const img = document.createElement("img");
-      img.src = imgData;
-      document.getElementById("snapshots").appendChild(img);
+      // Check size
+      const box = result.cornerPoints;
+      const width = Math.hypot(box[0].x - box[1].x, box[0].y - box[1].y);
+      const height = Math.hypot(box[1].x - box[2].x, box[1].y - box[2].y);
+      const videoWidth = video.videoWidth;
+      const videoHeight = video.videoHeight;
 
-      currentCapture++;
-      updatePose();
-      document.getElementById("capture").disabled = true;
+      const widthRatio = width / videoWidth;
+      const heightRatio = height / videoHeight;
+
+      const isFarEnough = widthRatio < 0.3 && heightRatio < 0.3;
+
+      if (text === correctCode && isFarEnough) {
+        status.textContent = "✅ QR code detected and valid!";
+        stepBackWarning.style.display = "none";
+        // Stop scanner to freeze the frame
+        scanner.stop();
+      } else if (text === correctCode && !isFarEnough) {
+        status.textContent = "⚠️ QR code too close.";
+        stepBackWarning.style.display = "block";
+      } else {
+        status.textContent = "❌ QR not detected or invalid.";
+        stepBackWarning.style.display = "none";
+      }
+    }, {
+      returnDetailedScanResult: true
     });
 
-    updatePose();
+    QrScanner.listCameras().then(cameras => {
+      const preferredCam = cameras.find(cam => cam.label.toLowerCase().includes('back')) || cameras[0];
+      scanner.start(preferredCam?.id);
+    });
   </script>
 </body>
 </html>
