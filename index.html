@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Workspace Documentation</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      text-align: center;
+    }
+    #camera {
+      width: 100%;
+      max-width: 400px;
+      margin: auto;
+    }
+    #message {
+      margin: 10px;
+      font-weight: bold;
+    }
+    #instructions {
+      margin: 15px;
+    }
+    video {
+      width: 100%;
+    }
+    canvas {
+      display: none;
+    }
+    #snapshots img {
+      width: 100px;
+      margin: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Document Your Workspace</h1>
+  <div id="instructions">Please hold your phone so the QR code is <b><span id="pose">centered</span></b> in view and step back to show your full workspace.</div>
+  <div id="camera"></div>
+  <div id="message"></div>
+  <button id="capture" disabled>Capture Photo</button>
+  <div id="snapshots"></div>
+
+  <script>
+    const EXPECTED_QR = "1234";
+    const REQUIRED_CAPTURES = ["centered", "left", "right"];
+    let currentCapture = 0;
+    let poses = ["centered", "left", "right"];
+    let capturedImages = [];
+
+    const html5QrCode = new Html5Qrcode("camera");
+    const config = { fps: 10, qrbox: 250 };
+
+    function updatePose() {
+      if (currentCapture < poses.length) {
+        document.getElementById("pose").textContent = poses[currentCapture];
+      } else {
+        document.getElementById("instructions").textContent = "✅ All required photos captured!";
+        document.getElementById("capture").disabled = true;
+        html5QrCode.stop();
+      }
+    }
+
+    function isCentered(bounds, frameWidth, frameHeight) {
+      const centerX = frameWidth / 2;
+      const centerY = frameHeight / 2;
+      const qrCenterX = (bounds.topLeftCorner.x + bounds.bottomRightCorner.x) / 2;
+      const qrCenterY = (bounds.topLeftCorner.y + bounds.bottomRightCorner.y) / 2;
+      const tolerance = 0.2 * frameWidth;
+
+      return Math.abs(centerX - qrCenterX) < tolerance &&
+             Math.abs(centerY - qrCenterY) < tolerance;
+    }
+
+    function isSmallEnough(bounds, frameWidth, frameHeight) {
+      const qrWidth = bounds.bottomRightCorner.x - bounds.topLeftCorner.x;
+      const qrHeight = bounds.bottomRightCorner.y - bounds.topLeftCorner.y;
+      return (qrWidth / frameWidth < 0.5) && (qrHeight / frameHeight < 0.5);
+    }
+
+    function drawSnapshot(video) {
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      return canvas.toDataURL("image/jpeg");
+    }
+
+    function handleScan(decodedText, result) {
+      if (decodedText === EXPECTED_QR && result && result.boundingBox) {
+        const video = document.querySelector("video");
+        const bounds = result.boundingBox;
+        const frameWidth = video.videoWidth;
+        const frameHeight = video.videoHeight;
+
+        const centered = isCentered(bounds, frameWidth, frameHeight);
+        const smallEnough = isSmallEnough(bounds, frameWidth, frameHeight);
+
+        if (centered && smallEnough) {
+          document.getElementById("message").textContent = "✅ QR detected and valid.";
+          document.getElementById("capture").disabled = false;
+        } else {
+          document.getElementById("message").textContent = "⚠️ QR is not centered or too large.";
+          document.getElementById("capture").disabled = true;
+        }
+      } else {
+        document.getElementById("message").textContent = "❌ QR not detected or invalid.";
+        document.getElementById("capture").disabled = true;
+      }
+    }
+
+    html5QrCode.start(
+      { facingMode: "environment" },
+      config,
+      handleScan
+    ).catch(err => {
+      console.error("Camera start error:", err);
+      document.getElementById("message").textContent = "Camera error. Please allow camera access.";
+    });
+
+    document.getElementById("capture").addEventListener("click", () => {
+      const video = document.querySelector("video");
+      const imgData = drawSnapshot(video);
+      capturedImages.push(imgData);
+
+      const img = document.createElement("img");
+      img.src = imgData;
+      document.getElementById("snapshots").appendChild(img);
+
+      currentCapture++;
+      updatePose();
+      document.getElementById("capture").disabled = true;
+    });
+
+    updatePose();
+  </script>
+</body>
+</html>
