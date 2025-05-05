@@ -1,87 +1,87 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Workspace Capture POC</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <style>
     html, body {
       margin: 0;
       padding: 0;
-      background: black;
       overflow: hidden;
+      background: black;
       font-family: sans-serif;
-      color: white;
     }
+
     #video {
       position: absolute;
-      top: 0; left: 0;
       width: 100vw;
       height: 100vh;
       object-fit: cover;
       z-index: 0;
     }
+
+    #alignmentBox {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 60vh;
+      height: 60vh;
+      transform: translate(-50%, -50%);
+      border: 4px dashed white;
+      box-sizing: border-box;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2;
+    }
+
+    #ghostQR {
+      width: 80%;
+      height: 80%;
+      opacity: 0.2;
+    }
+
     #indicators {
       position: absolute;
       top: 0;
       width: 100%;
       display: flex;
       justify-content: space-around;
-      z-index: 2;
-      background: rgba(0,0,0,0.5);
-      padding: 5px 0;
+      padding: 6px 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 3;
     }
+
     .indicator {
-      padding: 5px 10px;
+      padding: 4px 10px;
       border: 2px solid red;
       border-radius: 5px;
-      background: rgba(255,0,0,0.3);
+      background: rgba(255, 0, 0, 0.3);
+      color: white;
       transition: all 0.3s;
     }
+
     .indicator.active {
       border-color: lime;
-      background: rgba(0,255,0,0.3);
+      background: rgba(0, 255, 0, 0.3);
     }
-    #alignmentBox {
-      position: absolute;
-      z-index: 1;
-      border: 4px dashed rgba(255,255,255,0.6);
-      box-sizing: border-box;
-      aspect-ratio: 1/1;
-      width: 60vh;
-      height: 60vh;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    #ghostQR {
-      width: 80%;
-      height: 80%;
-      opacity: 0.2;
-    }
-    #overlayBox {
-      position: absolute;
-      border: 2px solid yellow;
-      z-index: 3;
-      pointer-events: none;
-    }
+
     #captureDisplay {
       position: absolute;
-      top: 0; left: 0;
+      top: 0;
+      left: 0;
       width: 100vw;
       height: 100vh;
-      object-fit: contain;
       background: black;
       z-index: 4;
       display: none;
     }
+
     #fullscreenOverlay {
       position: absolute;
       z-index: 5;
-      background: rgba(0,0,0,0.8);
+      background: rgba(0,0,0,0.9);
       color: white;
       width: 100vw;
       height: 100vh;
@@ -92,144 +92,155 @@
       text-align: center;
       padding: 20px;
     }
+
     #fullscreenOverlay button {
       padding: 10px 20px;
       font-size: 18px;
       margin-top: 20px;
     }
+
+    #overlayBox {
+      position: absolute;
+      border: 2px solid yellow;
+      pointer-events: none;
+      z-index: 2;
+    }
   </style>
 </head>
 <body>
+  <div id="fullscreenOverlay">
+    <h2>Prepare to Capture Your Workspace</h2>
+    <p>Turn your phone to landscape and align the camera so the QR code fills the box. Auto-capture will happen when all conditions are met.</p>
+    <button onclick="enterFullscreen()">Start</button>
+  </div>
 
-<div id="fullscreenOverlay">
-  <h2>Prepare to Capture Your Workspace</h2>
-  <p>Turn your phone to landscape and align the camera so the QR code fills the box. We will auto-capture once it's aligned.</p>
-  <button onclick="enterFullscreen()">Start</button>
-</div>
+  <video id="video" autoplay playsinline></video>
 
-<video id="video" autoplay playsinline></video>
+  <div id="alignmentBox">
+    <img id="ghostQR" src="https://api.qrserver.com/v1/create-qr-code/?data=1234&size=200x200" alt="QR Ghost" />
+  </div>
 
-<div id="indicators">
-  <div id="landscape" class="indicator">Landscape</div>
-  <div id="qrFound" class="indicator">QR Found</div>
-  <div id="aligned" class="indicator">Aligned</div>
-</div>
+  <div id="indicators">
+    <div id="landscape" class="indicator">Landscape</div>
+    <div id="qrFound" class="indicator">QR Found</div>
+    <div id="aligned" class="indicator">Aligned</div>
+  </div>
 
-<div id="alignmentBox">
-  <img id="ghostQR" src="https://api.qrserver.com/v1/create-qr-code/?data=1234&size=200x200" alt="QR Ghost">
-</div>
+  <canvas id="canvas" style="display:none;"></canvas>
+  <canvas id="captureDisplay"></canvas>
+  <div id="overlayBox"></div>
 
-<canvas id="canvas" style="display:none;"></canvas>
-<canvas id="captureDisplay"></canvas>
-<div id="overlayBox"></div>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <script>
+    const TARGET_QR_DATA = "1234";
 
-<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-<script>
-  const TARGET_QR_DATA = "1234";
-  let video = document.getElementById("video");
-  let canvas = document.getElementById("canvas");
-  let displayCanvas = document.getElementById("captureDisplay");
-  let overlayBox = document.getElementById("overlayBox");
+    const video = document.getElementById("video");
+    const canvas = document.getElementById("canvas");
+    const displayCanvas = document.getElementById("captureDisplay");
+    const overlayBox = document.getElementById("overlayBox");
 
-  let landscapeInd = document.getElementById("landscape");
-  let qrFoundInd = document.getElementById("qrFound");
-  let alignedInd = document.getElementById("aligned");
+    const landscapeInd = document.getElementById("landscape");
+    const qrFoundInd = document.getElementById("qrFound");
+    const alignedInd = document.getElementById("aligned");
 
-  function setIndicator(element, active) {
-    element.classList.toggle("active", active);
-  }
+    let captured = false;
 
-  function enterFullscreen() {
-    document.getElementById("fullscreenOverlay").style.display = "none";
-    if (document.documentElement.requestFullscreen) {
-      document.documentElement.requestFullscreen();
+    function setIndicator(indicator, active) {
+      indicator.classList.toggle("active", active);
     }
-    startCamera();
-  }
 
-  async function startCamera() {
-    let stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: "environment" }
-    });
-    video.srcObject = stream;
-    video.onloadedmetadata = () => {
-      video.play();
+    function enterFullscreen() {
+      document.getElementById("fullscreenOverlay").style.display = "none";
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen();
+      }
+      startCamera();
+    }
+
+    async function startCamera() {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" }
+      });
+      video.srcObject = stream;
+      video.onloadedmetadata = () => {
+        video.play();
+        requestAnimationFrame(tick);
+      };
+    }
+
+    function tick() {
+      if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+        return requestAnimationFrame(tick);
+      }
+
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+      const isLandscape = window.innerWidth > window.innerHeight;
+      setIndicator(landscapeInd, isLandscape);
+
+      let qrMatch = false;
+      let isAligned = false;
+
+      const code = jsQR(imageData.data, canvas.width, canvas.height);
+      if (code && code.data === TARGET_QR_DATA) {
+        qrMatch = true;
+        const loc = code.location;
+
+        // Bounding box of QR code
+        const minX = Math.min(loc.topLeftCorner.x, loc.topRightCorner.x, loc.bottomLeftCorner.x, loc.bottomRightCorner.x);
+        const maxX = Math.max(loc.topLeftCorner.x, loc.topRightCorner.x, loc.bottomLeftCorner.x, loc.bottomRightCorner.x);
+        const minY = Math.min(loc.topLeftCorner.y, loc.topRightCorner.y, loc.bottomLeftCorner.y, loc.bottomRightCorner.y);
+        const maxY = Math.max(loc.topLeftCorner.y, loc.topRightCorner.y, loc.bottomLeftCorner.y, loc.bottomRightCorner.y);
+
+        const boxWidth = maxX - minX;
+        const boxHeight = maxY - minY;
+
+        overlayBox.style.left = `${minX}px`;
+        overlayBox.style.top = `${minY}px`;
+        overlayBox.style.width = `${boxWidth}px`;
+        overlayBox.style.height = `${boxHeight}px`;
+
+        // Check if QR code center is close to canvas center
+        const cx = (minX + maxX) / 2;
+        const cy = (minY + maxY) / 2;
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const centerTol = 0.15 * canvas.height;
+
+        const centered = Math.abs(cx - centerX) < centerTol && Math.abs(cy - centerY) < centerTol;
+
+        // Check if QR height is about 50–70% of canvas height
+        const heightRatio = boxHeight / canvas.height;
+        const sizeOK = heightRatio > 0.5 && heightRatio < 0.7;
+
+        isAligned = centered && sizeOK;
+
+      } else {
+        overlayBox.style.width = overlayBox.style.height = "0px";
+      }
+
+      setIndicator(qrFoundInd, qrMatch);
+      setIndicator(alignedInd, isAligned);
+
+      if (isLandscape && qrMatch && isAligned && !captured) {
+        capture();
+        captured = true;
+      }
+
       requestAnimationFrame(tick);
-    };
-  }
-
-  function tick() {
-    if (video.readyState !== video.HAVE_ENOUGH_DATA) {
-      return requestAnimationFrame(tick);
     }
 
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    let ctx = canvas.getContext("2d");
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    let code = jsQR(imageData.data, canvas.width, canvas.height);
-
-    const isLandscape = window.innerWidth > window.innerHeight;
-    setIndicator(landscapeInd, isLandscape);
-
-    let found = false;
-    let aligned = false;
-    if (code && code.data === TARGET_QR_DATA) {
-      found = true;
-      // Draw overlay
-      const minX = Math.min(...code.location.topLeftCorner, code.location.topRightCorner,
-                            code.location.bottomLeftCorner, code.location.bottomRightCorner).x;
-      const maxX = Math.max(...code.location.topLeftCorner, code.location.topRightCorner,
-                            code.location.bottomLeftCorner, code.location.bottomRightCorner).x;
-      const minY = Math.min(...code.location.topLeftCorner, code.location.topRightCorner,
-                            code.location.bottomLeftCorner, code.location.bottomRightCorner).y;
-      const maxY = Math.max(...code.location.topLeftCorner, code.location.topRightCorner,
-                            code.location.bottomLeftCorner, code.location.bottomRightCorner).y;
-      const boxWidth = maxX - minX;
-      const boxHeight = maxY - minY;
-
-      overlayBox.style.left = `${minX}px`;
-      overlayBox.style.top = `${minY}px`;
-      overlayBox.style.width = `${boxWidth}px`;
-      overlayBox.style.height = `${boxHeight}px`;
-
-      // Check alignment: center within 20% of screen center, and height ~60% of canvas height
-      const cx = (minX + maxX) / 2;
-      const cy = (minY + maxY) / 2;
-      const tolerance = 0.15;
-
-      const canvasCenterX = canvas.width / 2;
-      const canvasCenterY = canvas.height / 2;
-      const heightRatio = boxHeight / canvas.height;
-
-      const isCentered = Math.abs(cx - canvasCenterX) < canvas.width * tolerance &&
-                         Math.abs(cy - canvasCenterY) < canvas.height * tolerance;
-      const isSized = heightRatio > 0.5 && heightRatio < 0.7;
-
-      aligned = isCentered && isSized;
-    } else {
-      overlayBox.style.width = overlayBox.style.height = '0px';
+    function capture() {
+      const ctx = displayCanvas.getContext("2d");
+      displayCanvas.width = video.videoWidth;
+      displayCanvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0, displayCanvas.width, displayCanvas.height);
+      displayCanvas.style.display = "block";
     }
-
-    setIndicator(qrFoundInd, found);
-    setIndicator(alignedInd, aligned);
-
-    if (found && aligned && isLandscape && !displayCanvas.dataset.captured) {
-      captureImage();
-      displayCanvas.dataset.captured = "true";
-    }
-
-    requestAnimationFrame(tick);
-  }
-
-  function captureImage() {
-    let dctx = displayCanvas.getContext("2d");
-    displayCanvas.width = canvas.width;
-    displayCanvas.height = canvas.height;
-    dctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-    displayCanvas.style.display = "block";
-  }
-</script>
+  </script>
 </body>
 </html>
