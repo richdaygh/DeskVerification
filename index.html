@@ -3,302 +3,462 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Camera QR Scanner</title>
+    <title>Workspace Validator</title>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
+            font-family: Arial, sans-serif;
         }
+        
         body {
             background: #000;
             color: #fff;
-            font-family: Arial, sans-serif;
             height: 100vh;
             width: 100vw;
             overflow: hidden;
+            position: relative;
         }
+        
         .container {
             position: relative;
             width: 100%;
             height: 100%;
+            overflow: hidden;
         }
-        #video {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        #canvas {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-        }
-        .overlay {
+        
+        .header {
             position: absolute;
             top: 0;
             left: 0;
-            right: 0;
-            background: rgba(0,0,0,0.7);
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
             padding: 10px;
             text-align: center;
             z-index: 10;
         }
-        #status {
+        
+        .header h1 {
+            font-size: 1.2rem;
+        }
+        
+        .status-indicators {
             position: absolute;
-            bottom: 0;
+            top: 50px;
             left: 0;
             right: 0;
-            background: rgba(0,0,0,0.7);
-            padding: 10px;
-            text-align: center;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 5px;
+            z-index: 10;
         }
-        button {
-            margin: 5px;
-            padding: 8px 16px;
-            background: #3498db;
-            color: white;
-            border: none;
+        
+        .indicator {
+            display: flex;
+            align-items: center;
+            padding: 5px 10px;
             border-radius: 4px;
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+        
+        .indicator svg {
+            margin-right: 5px;
+        }
+        
+        .success-icon {
+            color: #10b981;
+        }
+        
+        .error-icon {
+            color: #ef4444;
+        }
+        
+        #video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 5;
+        }
+        
+        .instructions {
+            position: absolute;
+            bottom: 80px;
+            left: 10px;
+            right: 10px;
+            font-size: 0.875rem;
+            padding: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            border-radius: 4px;
+            z-index: 10;
+        }
+        
+        .instructions ul {
+            list-style-type: disc;
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin: 5px 0;
+        }
+        
+        .status-bar {
+            position: absolute;
+            bottom: 10px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            z-index: 10;
+        }
+        
+        .status-bar svg {
+            margin-right: 8px;
+        }
+        
+        .fullscreen-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: white;
+            z-index: 15;
             cursor: pointer;
         }
-        .hidden {
-            display: none;
+        
+        .direction-arrows {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 7;
         }
-        #captureView {
+        
+        .arrow {
+            position: absolute;
+            background-color: rgba(255, 255, 255, 0.7);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .arrow.visible {
+            opacity: 1;
+        }
+        
+        .arrow-left {
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        
+        .arrow-right {
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        
+        .arrow-up {
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .arrow-down {
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .zoom-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 255, 255, 0.7);
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 6;
+        }
+        
+        .zoom-indicator.visible {
+            opacity: 1;
+        }
+        
+        #captured-view {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.9);
+            background-color: rgba(0, 0, 0, 0.9);
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             z-index: 20;
+            display: none;
         }
-        #capturedImage {
-            max-width: 90%;
-            max-height: 70vh;
-            border: 2px solid white;
+        
+        #captured-view h2 {
+            color: white;
+            font-size: 1.25rem;
+            font-weight: 600;
             margin-bottom: 20px;
+        }
+        
+        #captured-image {
+            max-width: 90%;
+            max-height: 60vh;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            border: 2px solid white;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+        }
+        
+        button {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        
+        button.success {
+            background-color: #10b981;
+        }
+        
+        body.fullscreen .instructions {
+            display: none;
         }
     </style>
 </head>
 <body>
     <div class="container">
+        <div class="header">
+            <h1>Workspace Validation</h1>
+            <button id="fullscreen-button" class="fullscreen-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="status-indicators">
+            <div id="landscape-indicator" class="indicator">
+                <svg xmlns="http://www.w3.org/2000/svg" class="error-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="15" y1="9" x2="9" y2="15"></line>
+                    <line x1="9" y1="9" x2="15" y2="15"></line>
+                </svg>
+                <span>Landscape</span>
+            </div>
+            <div id="qr-indicator" class="indicator">
+                <svg xmlns="http://www.w3.org/2000/svg" class="error-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="15" y1="9" x2="9" y2="15"></line>
+                    <line x1="9" y1="9" x2="15" y2="15"></line>
+                </svg>
+                <span>QR Code</span>
+            </div>
+            <div id="alignment-indicator" class="indicator">
+                <svg xmlns="http://www.w3.org/2000/svg" class="error-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="15" y1="9" x2="9" y2="15"></line>
+                    <line x1="9" y1="9" x2="15" y2="15"></line>
+                </svg>
+                <span>Aligned</span>
+            </div>
+        </div>
+        
         <video id="video" autoplay playsinline></video>
         <canvas id="canvas"></canvas>
         
-        <div class="overlay">
-            <h1>QR Code Scanner</h1>
-            <button id="fullscreenBtn">Fullscreen</button>
+        <div class="direction-arrows">
+            <div id="arrow-left" class="arrow arrow-left">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+            </div>
+            <div id="arrow-right" class="arrow arrow-right">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+            </div>
+            <div id="arrow-up" class="arrow arrow-up">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 19V5M5 12l7-7 7 7"/>
+                </svg>
+            </div>
+            <div id="arrow-down" class="arrow arrow-down">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 5v14M19 12l-7 7-7-7"/>
+                </svg>
+            </div>
         </div>
         
-        <div id="status">Camera inactive</div>
+        <div id="zoom-in" class="zoom-indicator">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                <line x1="11" y1="8" x2="11" y2="14"></line>
+                <line x1="8" y1="11" x2="14" y2="11"></line>
+            </svg>
+        </div>
+        
+        <div id="zoom-out" class="zoom-indicator">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                <line x1="8" y1="11" x2="14" y2="11"></line>
+            </svg>
+        </div>
+        
+        <div class="instructions">
+            <p>Instructions:</p>
+            <ul>
+                <li>Hold your phone in landscape mode</li>
+                <li>Make sure the QR code from your computer screen is visible</li>
+                <li>Align the QR code with the blue guide square</li>
+                <li>Photo will be taken automatically when properly aligned</li>
+            </ul>
+        </div>
+        
+        <div class="status-bar">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path>
+                <circle cx="12" cy="13" r="3"></circle>
+            </svg>
+            <span id="status-text">Starting camera...</span>
+        </div>
     </div>
     
-    <div id="captureView" class="hidden">
-        <img id="capturedImage" alt="Captured Image">
-        <div>
-            <button id="retakeBtn">Retake</button>
-            <button id="continueBtn">Continue</button>
+    <div id="captured-view">
+        <h2>Workspace Captured!</h2>
+        <img id="captured-image" alt="Captured Workspace">
+        <div class="button-group">
+            <button id="retake-button">Retake Photo</button>
+            <button id="continue-button" class="success">Continue to Exam</button>
         </div>
     </div>
 
     <script>
-        // DOM elements
+        // Elements
         const video = document.getElementById('video');
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
-        const statusText = document.getElementById('status');
-        const fullscreenBtn = document.getElementById('fullscreenBtn');
-        const captureView = document.getElementById('captureView');
-        const capturedImage = document.getElementById('capturedImage');
-        const retakeBtn = document.getElementById('retakeBtn');
-        const continueBtn = document.getElementById('continueBtn');
+        const capturedImage = document.getElementById('captured-image');
+        const capturedView = document.getElementById('captured-view');
+        const retakeButton = document.getElementById('retake-button');
+        const continueButton = document.getElementById('continue-button');
+        const fullscreenButton = document.getElementById('fullscreen-button');
+        const statusText = document.getElementById('status-text');
+        
+        // Status indicators
+        const landscapeIndicator = document.getElementById('landscape-indicator');
+        const qrIndicator = document.getElementById('qr-indicator');
+        const alignmentIndicator = document.getElementById('alignment-indicator');
+        
+        // Direction arrows
+        const arrowLeft = document.getElementById('arrow-left');
+        const arrowRight = document.getElementById('arrow-right');
+        const arrowUp = document.getElementById('arrow-up');
+        const arrowDown = document.getElementById('arrow-down');
+        
+        // Zoom indicators
+        const zoomIn = document.getElementById('zoom-in');
+        const zoomOut = document.getElementById('zoom-out');
         
         // Variables
         let stream = null;
-        let scanning = false;
-        let scanInterval = null;
+        let intervalId = null;
         
-        // Start camera
-        function startCamera() {
-            // Clear any existing interval
-            if (scanInterval) {
-                clearInterval(scanInterval);
-                scanInterval = null;
-            }
+        // Create ghost QR code
+        function createGhostQRCode(size) {
+            const qrSize = size || 100;
+            const canvas = document.createElement('canvas');
+            canvas.width = qrSize;
+            canvas.height = qrSize;
+            const qrCtx = canvas.getContext('2d');
             
-            // Check if getUserMedia is supported
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                statusText.textContent = "Camera access not supported in this browser";
-                return;
-            }
+            // Draw QR code background
+            qrCtx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            qrCtx.fillRect(0, 0, qrSize, qrSize);
             
-            // Request camera access
-            navigator.mediaDevices.getUserMedia({
-                video: { 
-                    facingMode: "environment",
-                    width: { ideal: 1280 },
-                    height: { ideal: 720 }
-                }
-            })
-            .then(function(mediaStream) {
-                stream = mediaStream;
-                video.srcObject = mediaStream;
-                
-                // Wait for video to be ready
-                video.onloadedmetadata = function() {
-                    scanning = true;
-                    statusText.textContent = "Camera active - scanning for QR code";
-                    startScanning();
-                };
-            })
-            .catch(function(err) {
-                statusText.textContent = "Camera error: " + err.message;
-                console.error("Camera error:", err);
-            });
-        }
-        
-        // Start QR code scanning
-        function startScanning() {
-            scanInterval = setInterval(function() {
-                if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
-                
-                // Set canvas size to match video
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                
-                // Draw video frame to canvas
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-                
-                // Draw alignment guide
-                drawAlignmentGuide();
-                
-                // Get image data for QR code detection
-                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                
-                // Detect QR code
-                const code = jsQR(imageData.data, imageData.width, imageData.height, {
-                    inversionAttempts: "dontInvert"
-                });
-                
-                // If QR code found
-                if (code && code.data === "1234") {
-                    // Draw QR code outline
-                    drawQROutline(code.location);
-                    
-                    // Check if properly aligned
-                    const isAligned = checkAlignment(code);
-                    
-                    // If aligned, capture image
-                    if (isAligned) {
-                        setTimeout(captureImage, 500);
-                    }
-                }
-            }, 200);
-        }
-        
-        // Draw alignment guide
-        function drawAlignmentGuide() {
-            const boxHeight = canvas.height * 0.4;
-            const boxWidth = boxHeight;
-            const boxX = (canvas.width - boxWidth) / 2;
-            const boxY = (canvas.height * 0.6) - (boxHeight / 2);
+            // Draw position detection patterns (corners)
+            qrCtx.fillStyle = 'rgba(0, 0, 0, 0.3)';
             
-            ctx.strokeStyle = "#00FFFF";
-            ctx.lineWidth = 3;
-            ctx.setLineDash([10, 10]);
-            ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
-            ctx.setLineDash([]);
-        }
-        
-        // Draw QR code outline
-        function drawQROutline(location) {
-            ctx.beginPath();
-            ctx.moveTo(location.topLeftCorner.x, location.topLeftCorner.y);
-            ctx.lineTo(location.topRightCorner.x, location.topRightCorner.y);
-            ctx.lineTo(location.bottomRightCorner.x, location.bottomRightCorner.y);
-            ctx.lineTo(location.bottomLeftCorner.x, location.bottomLeftCorner.y);
-            ctx.closePath();
-            ctx.lineWidth = 4;
-            ctx.strokeStyle = "#FFFF00";
-            ctx.stroke();
-        }
-        
-        // Check if QR code is properly aligned
-        function checkAlignment(code) {
-            const location = code.location;
+            // Top-left corner
+            qrCtx.fillRect(0, 0, qrSize * 0.3, qrSize * 0.3);
+            qrCtx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            qrCtx.fillRect(qrSize * 0.1, qrSize * 0.1, qrSize * 0.1, qrSize * 0.1);
+            qrCtx.fillStyle = 'rgba(0, 0, 0, 0.3)';
             
-            // Calculate QR dimensions and position
-            const topLeft = location.topLeft;
-            const topRight = location.topRight;
-            const bottomLeft = location.bottomLeft;
+            // Top-right corner
+            qrCtx.fillRect(qrSize * 0.7, 0, qrSize * 0.3, qrSize * 0.3);
+            qrCtx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            qrCtx.fillRect(qrSize * 0.8, qrSize * 0.1, qrSize * 0.1, qrSize * 0.1);
+            qrCtx.fillStyle = 'rgba(0, 0, 0, 0.3)';
             
-            // Calculate QR center
-            const qrCenterX = (topLeft.x + topRight.x + bottomLeft.x) / 3;
-            const qrCenterY = (topLeft.y + topRight.y + bottomLeft.y) / 3;
+            // Bottom-left corner
+            qrCtx.fillRect(0, qrSize * 0.7, qrSize * 0.3, qrSize * 0.3);
+            qrCtx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            qrCtx.fillRect(qrSize * 0.1, qrSize * 0.8, qrSize * 0.1, qrSize * 0.1);
             
-            // Calculate QR height
-            const qrHeight = Math.sqrt(
-                Math.pow(bottomLeft.x - topLeft.x, 2) + 
-                Math.pow(bottomLeft.y - topLeft.y, 2)
-            );
+            // Add text
+            qrCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            qrCtx.font = `${qrSize * 0.12}px Arial`;
+            qrCtx.textAlign = 'center';
+            qrCtx.textBaseline = 'middle';
+            qrCtx.fillText("1234", qrSize / 2, qrSize / 2);
             
-            // Calculate as percentage of canvas
-            const qrHeightPercent = qrHeight / canvas.height;
-            
-            // Calculate target position (center at 60% of height)
-            const targetCenterX = canvas.width / 2;
-            const targetCenterY = canvas.height * 0.6;
-            
-            // Check alignment with tolerance
-            const sizeTolerance = 0.15;
-            const positionTolerance = 0.1;
-            
-            const isSizedCorrectly = Math.abs(qrHeightPercent - 0.4) < sizeTolerance;
-            const isPositionedCorrectly = 
-                Math.abs(qrCenterX - targetCenterX) < canvas.width * positionTolerance &&
-                Math.abs(qrCenterY - targetCenterY) < canvas.height * positionTolerance;
-            
-            return isSizedCorrectly && isPositionedCorrectly;
-        }
-        
-        // Capture image
-        function captureImage() {
-            if (!scanning) return;
-            
-            // Stop scanning
-            scanning = false;
-            clearInterval(scanInterval);
-            
-            // Create a clean canvas for the captured image
-            const captureCanvas = document.createElement('canvas');
-            captureCanvas.width = video.videoWidth;
-            captureCanvas.height = video.videoHeight;
-            captureCanvas.getContext('2d').drawImage(video, 0, 0);
-            
-            // Set the captured image
-            capturedImage.src = captureCanvas.toDataURL('image/jpeg');
-            
-            // Show capture view
-            captureView.classList.remove('hidden');
-            
-            // Stop camera stream
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-            }
+            return canvas;
         }
         
         // Fullscreen toggle
-        fullscreenBtn.addEventListener('click', function() {
+        fullscreenButton.addEventListener('click', function() {
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen().catch(err => {
-                    console.error('Error attempting to enable fullscreen:', err);
+                    console.error("Error attempting to enable fullscreen:", err);
                 });
             } else {
                 if (document.exitFullscreen) {
@@ -307,19 +467,244 @@
             }
         });
         
-        // Retake button
-        retakeBtn.addEventListener('click', function() {
-            captureView.classList.add('hidden');
-            startCamera();
+        // Fullscreen change event
+        document.addEventListener('fullscreenchange', function() {
+            if (document.fullscreenElement) {
+                document.body.classList.add('fullscreen');
+            } else {
+                document.body.classList.remove('fullscreen');
+            }
         });
         
-        // Continue button
-        continueBtn.addEventListener('click', function() {
-            alert('Image captured successfully! In a real implementation, you would be redirected to the exam.');
-        });
+        // Hide all direction arrows
+        function hideAllDirectionArrows() {
+            arrowLeft.classList.remove('visible');
+            arrowRight.classList.remove('visible');
+            arrowUp.classList.remove('visible');
+            arrowDown.classList.remove('visible');
+            zoomIn.classList.remove('visible');
+            zoomOut.classList.remove('visible');
+        }
         
-        // Start camera when page loads
-        document.addEventListener('DOMContentLoaded', startCamera);
-    </script>
-</body>
-</html>
+        // Update status indicator
+        function updateIndicator(element, isSuccess) {
+            if (isSuccess) {
+                element.querySelector('svg').className = 'success-icon';
+                element.querySelector('svg').innerHTML = `
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                `;
+            } else {
+                element.querySelector('svg').className = 'error-icon';
+                element.querySelector('svg').innerHTML = `
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="15" y1="9" x2="9" y2="15"></line>
+                    <line x1="9" y1="9" x2="15" y2="15"></line>
+                `;
+            }
+        }
+        
+        // Draw alignment guide with ghost QR code
+        function drawAlignmentGuide(ctx, width, height) {
+            // Calculate box dimensions (40% of height)
+            const boxHeight = height * 0.4;
+            const boxWidth = boxHeight; // Square box
+            const boxX = (width - boxWidth) / 2; // Centered horizontally
+            const boxY = (height * 0.6) - (boxHeight / 2); // Center at 60% from top
+            
+            // Draw alignment box
+            ctx.strokeStyle = "#00FFFF";
+            ctx.lineWidth = 4;
+            ctx.setLineDash([10, 10]);
+            ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+            ctx.setLineDash([]);
+            
+            // Draw ghost QR code
+            const ghostQR = createGhostQRCode(boxHeight * 0.8);
+            const qrX = boxX + (boxWidth - ghostQR.width) / 2;
+            const qrY = boxY + (boxHeight - ghostQR.height) / 2;
+            ctx.drawImage(ghostQR, qrX, qrY);
+            
+            return {
+                x: boxX,
+                y: boxY,
+                width: boxWidth,
+                height: boxHeight
+            };
+        }
+        
+        // Start camera
+        function startCamera() {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({
+                    video: { 
+                        facingMode: "environment",
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                })
+                .then(function(mediaStream) {
+                    stream = mediaStream;
+                    video.srcObject = mediaStream;
+                    
+                    // Wait for video to be ready
+                    video.onloadedmetadata = function() {
+                        video.play();
+                        statusText.textContent = "Camera active - align with guide";
+                        processFrames();
+                    };
+                })
+                .catch(function(err) {
+                    console.error("Camera error:", err);
+                    statusText.textContent = "Camera error: " + err.message;
+                });
+            } else {
+                statusText.textContent = "Camera not supported in this browser";
+            }
+        }
+        
+        // Process video frames
+        function processFrames() {
+            intervalId = setInterval(function() {
+                if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    // Set canvas dimensions to match video
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    
+                    // Draw current frame to canvas
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    // Check if landscape
+                    const isLandscape = canvas.width > canvas.height;
+                    updateIndicator(landscapeIndicator, isLandscape);
+                    
+                    // Hide all direction arrows by default
+                    hideAllDirectionArrows();
+                    
+                    if (!isLandscape) {
+                        statusText.textContent = "Please rotate your device to landscape mode";
+                        return;
+                    }
+                    
+                    // Draw static alignment guide with ghost QR code
+                    const targetBox = drawAlignmentGuide(ctx, canvas.width, canvas.height);
+                    
+                    // Get image data for QR code scanning
+                    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    
+                    // Try to find QR code
+                    const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                        inversionAttempts: "dontInvert",
+                    });
+                    
+                    let qrCodeFound = false;
+                    let qrCodeAligned = false;
+                    
+                    if (code && code.data === "1234") {
+                        qrCodeFound = true;
+                        updateIndicator(qrIndicator, true);
+                        
+                        // Calculate QR code position and size
+                        const qrLocation = code.location;
+                        const topLeft = qrLocation.topLeft;
+                        const topRight = qrLocation.topRight;
+                        const bottomLeft = qrLocation.bottomLeft;
+                        const bottomRight = qrLocation.bottomRight;
+                        
+                        // Calculate center and dimensions
+                        const qrCenterX = (topLeft.x + topRight.x + bottomLeft.x + bottomRight.x) / 4;
+                        const qrCenterY = (topLeft.y + topRight.y + bottomLeft.y + bottomRight.y) / 4;
+                        
+                        // Calculate QR code height
+                        const leftHeight = Math.sqrt(Math.pow(bottomLeft.x - topLeft.x, 2) + Math.pow(bottomLeft.y - topLeft.y, 2));
+                        const rightHeight = Math.sqrt(Math.pow(bottomRight.x - topRight.x, 2) + Math.pow(bottomRight.y - topRight.y, 2));
+                        const qrHeight = (leftHeight + rightHeight) / 2;
+                        
+                        // Calculate as percentage of canvas dimensions
+                        const qrHeightPercent = qrHeight / canvas.height;
+                        const qrCenterXPercent = qrCenterX / canvas.width;
+                        const qrCenterYPercent = qrCenterY / canvas.height;
+                        
+                        // Calculate target box center
+                        const targetCenterX = targetBox.x + targetBox.width / 2;
+                        const targetCenterY = targetBox.y + targetBox.height / 2;
+                        const targetCenterXPercent = targetCenterX / canvas.width;
+                        const targetCenterYPercent = targetCenterY / canvas.height;
+                        
+                        // More forgiving tolerance
+                        const sizeTolerance = 0.15;
+                        const positionTolerance = 0.1;
+                        
+                        // Check alignment
+                        const isSizedCorrectly = Math.abs(qrHeightPercent - 0.4) < sizeTolerance;
+                        const isPositionedCorrectlyX = Math.abs(qrCenterXPercent - targetCenterXPercent) < positionTolerance;
+                        const isPositionedCorrectlyY = Math.abs(qrCenterYPercent - targetCenterYPercent) < positionTolerance;
+                        
+                        qrCodeAligned = isSizedCorrectly && isPositionedCorrectlyX && isPositionedCorrectlyY;
+                        updateIndicator(alignmentIndicator, qrCodeAligned);
+                        
+                        // Draw QR code outline
+                        ctx.beginPath();
+                        ctx.moveTo(topLeft.x, topLeft.y);
+                        ctx.lineTo(topRight.x, topRight.y);
+                        ctx.lineTo(bottomRight.x, bottomRight.y);
+                        ctx.lineTo(bottomLeft.x, bottomLeft.y);
+                        ctx.closePath();
+                        ctx.lineWidth = 4;
+                        ctx.strokeStyle = "#FFFF00";
+                        ctx.stroke();
+                        
+                        // Show direction guidance when QR code is found but not aligned
+                        if (!qrCodeAligned) {
+                            // Horizontal guidance
+                            if (qrCenterX < targetCenterX - canvas.width * 0.05) {
+                                arrowRight.classList.add('visible');
+                                statusText.textContent = "Move right";
+                            } else if (qrCenterX > targetCenterX + canvas.width * 0.05) {
+                                arrowLeft.classList.add('visible');
+                                statusText.textContent = "Move left";
+                            }
+                            
+                            // Vertical guidance
+                            if (qrCenterY < targetCenterY - canvas.height * 0.05) {
+                                arrowDown.classList.add('visible');
+                                statusText.textContent = "Move down";
+                            } else if (qrCenterY > targetCenterY + canvas.height * 0.05) {
+                                arrowUp.classList.add('visible');
+                                statusText.textContent = "Move up";
+                            }
+                            
+                            // Size guidance
+                            if (qrHeightPercent < 0.4 - sizeTolerance) {
+                                zoomIn.classList.add('visible');
+                                statusText.textContent = "Move closer";
+                            } else if (qrHeightPercent > 0.4 + sizeTolerance) {
+                                zoomOut.classList.add('visible');
+                                statusText.textContent = "Move farther away";
+                            }
+                        } else {
+                            statusText.textContent = "Perfect! Capturing...";
+                            captureImage();
+                        }
+                    } else {
+                        updateIndicator(qrIndicator, false);
+                        updateIndicator(alignmentIndicator, false);
+                        statusText.textContent = "QR code not detected - ensure it's visible";
+                    }
+                    
+                    // Draw border based on orientation
+                    ctx.strokeStyle = isLandscape ? "#00FF00" : "#FF0000";
+                    ctx.lineWidth = 5;
+                    ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
+                }
+            }, 200);
+        }
+        
+        // Capture image
+        function captureImage() {
+            // Stop processing frames
+            clearInterval(intervalId);
+            
+            // Create a clean canvas for the captured image
+            const captureCanvas = document.createElement('canvas');
+            captureCanvas.width = video.
