@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Proctoring Workspace Validator</title>
     <style>
         * {
@@ -12,81 +12,38 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
         
-        body {
-            background-color: #f3f4f6;
-            min-height: 100vh;
+        html, body {
+            height: 100%;
+            width: 100%;
+            overflow: hidden;
+            position: fixed;
+            background-color: #000;
+        }
+        
+        #fullscreen-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #000;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem;
+            z-index: 1000;
         }
         
-        .container {
-            width: 100%;
-            max-width: 800px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        
-        h1 {
-            font-size: 1.5rem;
-            font-weight: bold;
-            margin-bottom: 1rem;
-        }
-        
-        .card {
-            background-color: white;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            width: 100%;
-        }
-        
-        .status-indicators {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 0.5rem;
-            margin-bottom: 1rem;
-        }
-        
-        .indicator {
-            display: flex;
-            align-items: center;
-            padding: 0.5rem;
-            border-radius: 0.375rem;
-        }
-        
-        .indicator.success {
-            background-color: #dcfce7;
-        }
-        
-        .indicator.error {
-            background-color: #fee2e2;
-        }
-        
-        .indicator-icon {
-            margin-right: 0.5rem;
-        }
-        
-        .indicator-text {
-            font-size: 0.875rem;
-        }
-        
-        .video-container {
+        .camera-container {
             position: relative;
             width: 100%;
-            background-color: black;
-            border-radius: 0.5rem;
+            flex-grow: 1;
             overflow: hidden;
-            margin-bottom: 1rem;
         }
         
         video {
+            position: absolute;
             width: 100%;
-            height: auto;
-            display: block;
+            height: 100%;
+            object-fit: cover;
         }
         
         canvas {
@@ -97,144 +54,230 @@
             height: 100%;
         }
         
-        .instructions {
-            font-size: 0.875rem;
-            padding: 0.5rem;
-            background-color: #f3f4f6;
-            border-radius: 0.375rem;
-            margin-bottom: 1rem;
-        }
-        
-        .instructions ul {
-            list-style-type: disc;
-            padding-left: 1.25rem;
-        }
-        
-        .instructions li {
-            margin: 0.25rem 0;
-        }
-        
-        .camera-status {
+        .status-bar {
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            color: white;
+            padding: 12px;
             display: flex;
-            justify-content: center;
+            flex-direction: column;
+            z-index: 100;
+        }
+        
+        .status-title {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        
+        .status-indicators {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .indicator {
+            display: flex;
             align-items: center;
-            color: #6b7280;
+            padding: 8px;
+            border-radius: 8px;
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        .indicator.success {
+            background-color: rgba(16, 185, 129, 0.2);
+            border: 1px solid #10b981;
+        }
+        
+        .indicator.error {
+            background-color: rgba(239, 68, 68, 0.2);
+            border: 1px solid #ef4444;
+        }
+        
+        .indicator-icon {
+            margin-right: 8px;
+        }
+        
+        .indicator-text {
+            font-size: 14px;
+            color: #fff;
+        }
+        
+        .fullscreen-button {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            width: 100%;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+        
+        .fullscreen-button:hover {
+            background-color: #2563eb;
         }
         
         .captured-view {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
             display: flex;
             flex-direction: column;
+            padding: 16px;
+            z-index: 2000;
+        }
+        
+        .captured-title {
+            color: white;
+            font-size: 24px;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+        
+        .captured-image-container {
+            flex-grow: 1;
+            display: flex;
             align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            margin-bottom: 16px;
         }
         
         .captured-image {
             max-width: 100%;
-            height: auto;
-            border-radius: 0.375rem;
-            margin-bottom: 1rem;
+            max-height: 100%;
+            object-fit: contain;
         }
         
         .button-group {
             display: flex;
-            gap: 1rem;
+            gap: 16px;
+            padding: 0 16px 16px;
         }
         
-        button {
+        .button-group button {
+            flex: 1;
             background-color: #3b82f6;
             color: white;
             border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 0.375rem;
-            cursor: pointer;
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 16px;
             font-weight: 500;
-            transition: background-color 0.2s;
+            cursor: pointer;
         }
         
-        button:hover {
-            background-color: #2563eb;
-        }
-        
-        button.success {
+        .button-group button.success {
             background-color: #10b981;
         }
         
-        button.success:hover {
-            background-color: #059669;
+        .button-group button:hover {
+            opacity: 0.9;
+        }
+        
+        .instructions {
+            color: white;
+            font-size: 12px;
+            text-align: center;
+            margin-top: 8px;
         }
         
         .hidden {
-            display: none;
+            display: none !important;
+        }
+
+        /* QR Code template for alignment */
+        .qr-template {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            width: 100%;
+            height: 100%;
+            opacity: 0.3;
+        }
+        
+        .qr-template div {
+            border: 2px solid rgba(0, 255, 255, 0.7);
+        }
+        
+        .qr-template .corner {
+            background-color: rgba(0, 255, 255, 0.4);
+        }
+        
+        .qr-template .center {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(0, 255, 255, 0.7);
+            font-size: 12px;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Workspace Validation</h1>
+    <div id="fullscreen-container">
+        <div class="camera-container">
+            <video id="video" autoplay playsinline muted></video>
+            <canvas id="canvas"></canvas>
+        </div>
         
-        <div id="camera-view" class="card">
-            <div class="text-center">
-                <p style="text-align: center; font-size: 1.125rem; margin-bottom: 0.5rem;">Please capture your workspace:</p>
-                <div class="status-indicators">
-                    <div id="landscape-indicator" class="indicator error">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="indicator-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #ef4444;">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="15" y1="9" x2="9" y2="15"></line>
-                            <line x1="9" y1="9" x2="15" y2="15"></line>
-                        </svg>
-                        <span class="indicator-text">Landscape Mode</span>
-                    </div>
-                    <div id="qr-indicator" class="indicator error">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="indicator-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #ef4444;">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="15" y1="9" x2="9" y2="15"></line>
-                            <line x1="9" y1="9" x2="15" y2="15"></line>
-                        </svg>
-                        <span class="indicator-text">QR Code Found</span>
-                    </div>
-                    <div id="alignment-indicator" class="indicator error">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="indicator-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #ef4444;">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="15" y1="9" x2="9" y2="15"></line>
-                            <line x1="9" y1="9" x2="15" y2="15"></line>
-                        </svg>
-                        <span class="indicator-text">Aligned Correctly</span>
-                    </div>
+        <div class="status-bar">
+            <div class="status-title">Workspace Validation</div>
+            <div class="status-indicators">
+                <div id="landscape-indicator" class="indicator error">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="indicator-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #ef4444;">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="15" y1="9" x2="9" y2="15"></line>
+                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                    </svg>
+                    <span class="indicator-text">Landscape</span>
                 </div>
-            </div>
-            
-            <div class="video-container">
-                <video id="video" autoplay playsinline></video>
-                <canvas id="canvas"></canvas>
+                <div id="qr-indicator" class="indicator error">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="indicator-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #ef4444;">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="15" y1="9" x2="9" y2="15"></line>
+                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                    </svg>
+                    <span class="indicator-text">QR Found</span>
+                </div>
+                <div id="alignment-indicator" class="indicator error">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="indicator-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #ef4444;">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="15" y1="9" x2="9" y2="15"></line>
+                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                    </svg>
+                    <span class="indicator-text">Aligned</span>
+                </div>
             </div>
             
             <div class="instructions">
-                <p>Instructions:</p>
-                <ul>
-                    <li>Hold your phone in landscape mode</li>
-                    <li>Make sure the QR code from your computer screen is visible</li>
-                    <li>Align the QR code with the blue square</li>
-                    <li>The photo will be taken automatically when properly aligned</li>
-                </ul>
+                Align the QR code on your screen with the blue template. Hold steady.
             </div>
             
-            <div class="camera-status">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem; color: #6b7280;">
-                    <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path>
-                    <circle cx="12" cy="13" r="3"></circle>
-                </svg>
-                <span>Camera active - waiting for alignment...</span>
-            </div>
+            <button id="fullscreen-button" class="fullscreen-button">
+                Enter Fullscreen Mode
+            </button>
         </div>
-        
-        <div id="captured-view" class="card hidden">
-            <div class="captured-view">
-                <h2 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">Workspace Captured!</h2>
-                <img id="captured-image" class="captured-image" alt="Captured Workspace">
-                <div class="button-group">
-                    <button id="retake-button">Retake Photo</button>
-                    <button id="continue-button" class="success">Continue to Exam</button>
-                </div>
-            </div>
+    </div>
+    
+    <div id="captured-view" class="captured-view hidden">
+        <div class="captured-title">Workspace Captured!</div>
+        <div class="captured-image-container">
+            <img id="captured-image" class="captured-image" alt="Captured Workspace">
+        </div>
+        <div class="button-group">
+            <button id="retake-button">Retake Photo</button>
+            <button id="continue-button" class="success">Continue to Exam</button>
         </div>
     </div>
 
@@ -245,10 +288,11 @@
             const canvas = document.getElementById('canvas');
             const ctx = canvas.getContext('2d');
             const capturedImage = document.getElementById('captured-image');
-            const cameraView = document.getElementById('camera-view');
+            const fullscreenContainer = document.getElementById('fullscreen-container');
             const capturedView = document.getElementById('captured-view');
             const retakeButton = document.getElementById('retake-button');
             const continueButton = document.getElementById('continue-button');
+            const fullscreenButton = document.getElementById('fullscreen-button');
             
             // Status indicators
             const landscapeIndicator = document.getElementById('landscape-indicator');
@@ -257,12 +301,52 @@
             
             let stream = null;
             let intervalId = null;
+            let isFullscreen = false;
             
             // Success indicator SVG
             const successSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #10b981;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
             
             // Error indicator SVG
             const errorSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #ef4444;"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`;
+            
+            // Fullscreen button click handler
+            fullscreenButton.addEventListener('click', () => {
+                enterFullscreen();
+            });
+            
+            // Enter fullscreen mode
+            function enterFullscreen() {
+                if (fullscreenContainer.requestFullscreen) {
+                    fullscreenContainer.requestFullscreen();
+                } else if (fullscreenContainer.webkitRequestFullscreen) {
+                    fullscreenContainer.webkitRequestFullscreen();
+                } else if (fullscreenContainer.msRequestFullscreen) {
+                    fullscreenContainer.msRequestFullscreen();
+                }
+                
+                isFullscreen = true;
+                fullscreenButton.style.display = 'none';
+                
+                // iOS specific handling
+                if (navigator.userAgent.match(/iPhone|iPad|iPod/i)) {
+                    video.style.width = '100vw';
+                    video.style.height = '100vh';
+                }
+            }
+            
+            // Handle fullscreen change
+            document.addEventListener('fullscreenchange', handleFullscreenChange);
+            document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+            document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+            document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+            
+            function handleFullscreenChange() {
+                if (!document.fullscreenElement && !document.webkitFullscreenElement && 
+                    !document.mozFullScreenElement && !document.msFullscreenElement) {
+                    isFullscreen = false;
+                    fullscreenButton.style.display = 'block';
+                }
+            }
             
             // Start camera
             async function startCamera() {
@@ -305,7 +389,15 @@
                         
                         // Check if landscape
                         const isLandscape = canvas.width > canvas.height;
-                        updateIndicator(landscapeIndicator, isLandscape, "Landscape Mode");
+                        updateIndicator(landscapeIndicator, isLandscape, "Landscape");
+                        
+                        // Draw border based on orientation
+                        ctx.strokeStyle = isLandscape ? "#00FF00" : "#FF0000";
+                        ctx.lineWidth = 5;
+                        ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
+                        
+                        // Draw static alignment guide with ghost QR code
+                        drawStaticAlignmentGuide(ctx, canvas.width, canvas.height);
                         
                         // Scan for QR code
                         const code = jsQR(imageData.data, imageData.width, imageData.height, {
@@ -317,7 +409,7 @@
                         
                         if (code && code.data === "1234") {
                             qrCodeFound = true;
-                            updateIndicator(qrIndicator, true, "QR Code Found");
+                            updateIndicator(qrIndicator, true, "QR Found");
                             
                             // Calculate QR code position and size
                             const qrLocation = code.location;
@@ -338,9 +430,9 @@
                             const isCentered = Math.abs(qrCenterX - 0.5) < 0.1;
                             
                             qrCodeAligned = isSizedCorrectly && isPositionedCorrectly && isCentered;
-                            updateIndicator(alignmentIndicator, qrCodeAligned, "Aligned Correctly");
+                            updateIndicator(alignmentIndicator, qrCodeAligned, "Aligned");
                             
-                            // Draw QR code outline
+                            // Draw dynamic QR code detection box
                             ctx.beginPath();
                             ctx.moveTo(qrLocation.topLeftCorner.x, qrLocation.topLeftCorner.y);
                             ctx.lineTo(qrLocation.topRightCorner.x, qrLocation.topRightCorner.y);
@@ -350,40 +442,73 @@
                             ctx.lineWidth = 4;
                             ctx.strokeStyle = "#FFFF00";
                             ctx.stroke();
+                            
+                            // Draw center point of detected QR code
+                            const centerX = (topLeft.x + topRight.x + bottomLeft.x + code.location.bottomRight.x) / 4;
+                            const centerY = (topLeft.y + topRight.y + bottomLeft.y + code.location.bottomRight.y) / 4;
+                            ctx.beginPath();
+                            ctx.arc(centerX, centerY, 8, 0, 2 * Math.PI);
+                            ctx.fillStyle = "#FFFF00";
+                            ctx.fill();
                         } else {
-                            updateIndicator(qrIndicator, false, "QR Code Found");
-                            updateIndicator(alignmentIndicator, false, "Aligned Correctly");
+                            updateIndicator(qrIndicator, false, "QR Found");
+                            updateIndicator(alignmentIndicator, false, "Aligned");
                         }
-                        
-                        // Draw border based on orientation
-                        ctx.strokeStyle = isLandscape ? "#00FF00" : "#FF0000";
-                        ctx.lineWidth = 5;
-                        ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
-                        
-                        // Draw alignment guide
-                        drawAlignmentGuide(ctx, canvas.width, canvas.height);
                         
                         // Check if all requirements are met for auto-capture
                         if (isLandscape && qrCodeFound && qrCodeAligned) {
-                            // Auto-capture the image
-                            captureImage();
+                            // Auto-capture the image after a short delay to allow the user to hold steady
+                            setTimeout(() => {
+                                captureImage();
+                            }, 500);
                         }
                     }
                 }, 200);
             }
             
-            // Draw alignment guide
-            function drawAlignmentGuide(ctx, width, height) {
+            // Draw static alignment guide with ghost QR code
+            function drawStaticAlignmentGuide(ctx, width, height) {
+                // Calculate the position for the alignment guide
                 const boxHeight = height * 0.4; // 40% of height
                 const boxWidth = boxHeight; // Square box
                 const boxX = (width - boxWidth) / 2; // Centered horizontally
                 const boxY = (height * 0.6) - (boxHeight / 2); // Center at 60% from top
                 
+                // Draw the outer alignment box
                 ctx.strokeStyle = "#00FFFF";
                 ctx.lineWidth = 3;
                 ctx.setLineDash([10, 10]);
                 ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
                 ctx.setLineDash([]);
+                
+                // Draw ghost QR code inside
+                const padding = boxWidth * 0.15;
+                const qrSize = boxWidth - (padding * 2);
+                const qrX = boxX + padding;
+                const qrY = boxY + padding;
+                
+                // Draw simplified QR pattern
+                // Top-left position marker
+                ctx.fillStyle = "rgba(0, 255, 255, 0.3)";
+                ctx.fillRect(qrX, qrY, qrSize * 0.25, qrSize * 0.25);
+                ctx.strokeStyle = "rgba(0, 255, 255, 0.6)";
+                ctx.lineWidth = 2;
+                ctx.strokeRect(qrX, qrY, qrSize * 0.25, qrSize * 0.25);
+                
+                // Top-right position marker
+                ctx.fillRect(qrX + qrSize * 0.75, qrY, qrSize * 0.25, qrSize * 0.25);
+                ctx.strokeRect(qrX + qrSize * 0.75, qrY, qrSize * 0.25, qrSize * 0.25);
+                
+                // Bottom-left position marker
+                ctx.fillRect(qrX, qrY + qrSize * 0.75, qrSize * 0.25, qrSize * 0.25);
+                ctx.strokeRect(qrX, qrY + qrSize * 0.75, qrSize * 0.25, qrSize * 0.25);
+                
+                // Center text for "1234"
+                ctx.font = `${qrSize * 0.15}px Arial`;
+                ctx.fillStyle = "rgba(0, 255, 255, 0.6)";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText("1234", qrX + qrSize / 2, qrY + qrSize / 2);
             }
             
             // Update indicator status
@@ -409,8 +534,15 @@
                 capturedImage.src = imageData;
                 
                 // Show the captured view, hide the camera view
-                cameraView.classList.add("hidden");
+                fullscreenContainer.classList.add("hidden");
                 capturedView.classList.remove("hidden");
+                
+                // Exit fullscreen if active
+                if (document.fullscreenElement) {
+                    document.exitFullscreen().catch(err => {
+                        console.error("Error exiting fullscreen:", err);
+                    });
+                }
                 
                 // Stop camera
                 if (stream) {
@@ -422,12 +554,17 @@
             retakeButton.addEventListener("click", () => {
                 // Hide the captured view, show the camera view
                 capturedView.classList.add("hidden");
-                cameraView.classList.remove("hidden");
+                fullscreenContainer.classList.remove("hidden");
                 
                 // Reset indicators
-                updateIndicator(landscapeIndicator, false, "Landscape Mode");
-                updateIndicator(qrIndicator, false, "QR Code Found");
-                updateIndicator(alignmentIndicator, false, "Aligned Correctly");
+                updateIndicator(landscapeIndicator, false, "Landscape");
+                updateIndicator(qrIndicator, false, "QR Found");
+                updateIndicator(alignmentIndicator, false, "Aligned");
+                
+                // Show fullscreen button again if not in fullscreen
+                if (!isFullscreen) {
+                    fullscreenButton.style.display = 'block';
+                }
                 
                 // Restart camera
                 startCamera();
@@ -438,6 +575,29 @@
                 // Here you would normally submit the image to your server
                 // and redirect the user back to the exam
                 alert("Image captured successfully! In a real implementation, you would be redirected back to your exam.");
+            });
+            
+            // Screen orientation change handler
+            window.addEventListener('orientationchange', () => {
+                // Give the screen time to adjust
+                setTimeout(() => {
+                    // Check if video is ready and update canvas dimensions
+                    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                    }
+                }, 300);
+            });
+            
+            // iOS Safari fullscreen workarounds
+            window.addEventListener('resize', () => {
+                if (navigator.userAgent.match(/iPhone|iPad|iPod/i)) {
+                    if (isFullscreen) {
+                        // Force video to fill the screen
+                        video.style.width = '100vw';
+                        video.style.height = '100vh';
+                    }
+                }
             });
             
             // Start the camera when the page loads
