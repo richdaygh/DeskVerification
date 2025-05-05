@@ -2,226 +2,234 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Workspace Capture</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Workspace Capture POC</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <style>
-    body, html {
+    html, body {
       margin: 0;
       padding: 0;
       background: black;
       overflow: hidden;
-      color: white;
       font-family: sans-serif;
+      color: white;
     }
-
-    #status-bar {
-      display: flex;
-      justify-content: space-around;
-      background: rgba(0,0,0,0.7);
-      padding: 10px;
-      font-size: 14px;
-      position: absolute;
-      width: 100%;
-      top: 0;
-      z-index: 10;
-    }
-
-    .status {
-      padding: 5px 10px;
-      border-radius: 5px;
-      background: red;
-    }
-
-    .status.ok {
-      background: green;
-    }
-
     #video {
       position: absolute;
-      width: 100%;
-      height: 100%;
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
       object-fit: cover;
-      top: 0;
-      left: 0;
+      z-index: 0;
     }
-
-    #alignment-box {
+    #indicators {
       position: absolute;
+      top: 0;
+      width: 100%;
+      display: flex;
+      justify-content: space-around;
+      z-index: 2;
+      background: rgba(0,0,0,0.5);
+      padding: 5px 0;
+    }
+    .indicator {
+      padding: 5px 10px;
+      border: 2px solid red;
+      border-radius: 5px;
+      background: rgba(255,0,0,0.3);
+      transition: all 0.3s;
+    }
+    .indicator.active {
+      border-color: lime;
+      background: rgba(0,255,0,0.3);
+    }
+    #alignmentBox {
+      position: absolute;
+      z-index: 1;
+      border: 4px dashed rgba(255,255,255,0.6);
+      box-sizing: border-box;
+      aspect-ratio: 1/1;
+      width: 60vh;
+      height: 60vh;
       top: 50%;
       left: 50%;
-      width: 80vw;
-      height: 60vh;
       transform: translate(-50%, -50%);
-      border: 4px dashed red;
-      z-index: 5;
-      background: rgba(255, 255, 255, 0.05);
-      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAqUlEQVR4nO3XsQ0AMAwEwVn/p9uhTBAiMLvpNhxHyYtiK7lmn8Nid1x9apX1BQAAAAAAAAAAAABgGc0A+yJtcI0zDmwHvVrd3mFgw43hI8NhYMC4eDxYMC4eDxYMC4eDxYMC4eDxYMC4eDxYMC4eDxYMC4eDxYMC4eDxYMC4eDxYMC4eDxYMC4eDxYMC4eDxYMC4eLwUKh80YTGV9AoAAAAASUVORK5CYII=");
-      background-repeat: no-repeat;
-      background-position: center;
-      background-size: 60%;
-      pointer-events: none;
-    }
-
-    #captured {
-      position: absolute;
-      bottom: 10px;
-      width: 100%;
       display: flex;
+      align-items: center;
       justify-content: center;
-      gap: 10px;
-      z-index: 20;
     }
-
-    .thumb {
-      width: 30vw;
-      border: 2px solid white;
+    #ghostQR {
+      width: 80%;
+      height: 80%;
+      opacity: 0.2;
     }
-
-    #flash {
+    #overlayBox {
       position: absolute;
-      width: 100%;
-      height: 100%;
-      background: white;
-      opacity: 0;
-      transition: opacity 0.2s;
-      z-index: 50;
+      border: 2px solid yellow;
+      z-index: 3;
       pointer-events: none;
     }
-
-    #rotate-warning {
-      display: none;
+    #captureDisplay {
       position: absolute;
-      top: 0;
-      left: 0;
-      background: rgba(0,0,0,0.9);
+      top: 0; left: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: contain;
+      background: black;
+      z-index: 4;
+      display: none;
+    }
+    #fullscreenOverlay {
+      position: absolute;
+      z-index: 5;
+      background: rgba(0,0,0,0.8);
       color: white;
-      width: 100%;
-      height: 100%;
-      z-index: 100;
-      justify-content: center;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
       align-items: center;
+      justify-content: center;
       text-align: center;
-      font-size: 24px;
       padding: 20px;
     }
-
-    #rotate-warning.show {
-      display: flex;
+    #fullscreenOverlay button {
+      padding: 10px 20px;
+      font-size: 18px;
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
-  <div id="status-bar">
-    <div id="status-orientation" class="status">Landscape</div>
-    <div id="status-qr" class="status">QR Code</div>
-    <div id="status-align" class="status">Alignment</div>
-  </div>
 
-  <video id="video" autoplay muted playsinline></video>
-  <div id="alignment-box"></div>
-  <div id="captured"></div>
-  <div id="flash"></div>
-  <div id="rotate-warning">Please rotate your device to landscape mode to proceed.</div>
+<div id="fullscreenOverlay">
+  <h2>Prepare to Capture Your Workspace</h2>
+  <p>Turn your phone to landscape and align the camera so the QR code fills the box. We will auto-capture once it's aligned.</p>
+  <button onclick="enterFullscreen()">Start</button>
+</div>
 
-  <canvas id="canvas" style="display:none;"></canvas>
+<video id="video" autoplay playsinline></video>
 
-  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-  <script>
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const statusOrientation = document.getElementById('status-orientation');
-    const statusQR = document.getElementById('status-qr');
-    const statusAlign = document.getElementById('status-align');
-    const flash = document.getElementById('flash');
-    const rotateWarning = document.getElementById('rotate-warning');
-    const capturedContainer = document.getElementById('captured');
+<div id="indicators">
+  <div id="landscape" class="indicator">Landscape</div>
+  <div id="qrFound" class="indicator">QR Found</div>
+  <div id="aligned" class="indicator">Aligned</div>
+</div>
 
-    let captureCount = 0;
-    let captured = false;
+<div id="alignmentBox">
+  <img id="ghostQR" src="https://api.qrserver.com/v1/create-qr-code/?data=1234&size=200x200" alt="QR Ghost">
+</div>
 
-    function checkOrientation() {
-      const isLandscape = window.innerWidth > window.innerHeight;
-      rotateWarning.classList.toggle('show', !isLandscape);
-      statusOrientation.classList.toggle('ok', isLandscape);
-      return isLandscape;
+<canvas id="canvas" style="display:none;"></canvas>
+<canvas id="captureDisplay"></canvas>
+<div id="overlayBox"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script>
+  const TARGET_QR_DATA = "1234";
+  let video = document.getElementById("video");
+  let canvas = document.getElementById("canvas");
+  let displayCanvas = document.getElementById("captureDisplay");
+  let overlayBox = document.getElementById("overlayBox");
+
+  let landscapeInd = document.getElementById("landscape");
+  let qrFoundInd = document.getElementById("qrFound");
+  let alignedInd = document.getElementById("aligned");
+
+  function setIndicator(element, active) {
+    element.classList.toggle("active", active);
+  }
+
+  function enterFullscreen() {
+    document.getElementById("fullscreenOverlay").style.display = "none";
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen();
     }
+    startCamera();
+  }
 
-    window.addEventListener('resize', checkOrientation);
-    checkOrientation();
-
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(stream => {
-      video.srcObject = stream;
-      video.onloadedmetadata = () => {
-        video.play();
-        scanLoop();
-      };
-    }).catch(err => {
-      alert("Camera access failed: " + err);
+  async function startCamera() {
+    let stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "environment" }
     });
+    video.srcObject = stream;
+    video.onloadedmetadata = () => {
+      video.play();
+      requestAnimationFrame(tick);
+    };
+  }
 
-    function flashScreen() {
-      flash.style.opacity = 1;
-      setTimeout(() => flash.style.opacity = 0, 200);
+  function tick() {
+    if (video.readyState !== video.HAVE_ENOUGH_DATA) {
+      return requestAnimationFrame(tick);
     }
 
-    function scanLoop() {
-      if (video.readyState === video.HAVE_ENOUGH_DATA) {
-        const vw = video.videoWidth;
-        const vh = video.videoHeight;
-        canvas.width = vw;
-        canvas.height = vh;
-        ctx.drawImage(video, 0, 0, vw, vh);
-        const imageData = ctx.getImageData(0, 0, vw, vh);
-        const code = jsQR(imageData.data, vw, vh, { inversionAttempts: "dontInvert" });
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    let ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    let code = jsQR(imageData.data, canvas.width, canvas.height);
 
-        let foundMatch = false;
-        let alignmentOK = false;
+    const isLandscape = window.innerWidth > window.innerHeight;
+    setIndicator(landscapeInd, isLandscape);
 
-        if (code && code.data === "1234") {
-          foundMatch = true;
-          const qrCenterX = (code.location.topLeftCorner.x + code.location.bottomRightCorner.x) / 2;
-          const qrCenterY = (code.location.topLeftCorner.y + code.location.bottomRightCorner.y) / 2;
-          const qrHeight = Math.hypot(
-            code.location.topLeftCorner.y - code.location.bottomLeftCorner.y,
-            code.location.topLeftCorner.x - code.location.bottomLeftCorner.x
-          );
+    let found = false;
+    let aligned = false;
+    if (code && code.data === TARGET_QR_DATA) {
+      found = true;
+      // Draw overlay
+      const minX = Math.min(...code.location.topLeftCorner, code.location.topRightCorner,
+                            code.location.bottomLeftCorner, code.location.bottomRightCorner).x;
+      const maxX = Math.max(...code.location.topLeftCorner, code.location.topRightCorner,
+                            code.location.bottomLeftCorner, code.location.bottomRightCorner).x;
+      const minY = Math.min(...code.location.topLeftCorner, code.location.topRightCorner,
+                            code.location.bottomLeftCorner, code.location.bottomRightCorner).y;
+      const maxY = Math.max(...code.location.topLeftCorner, code.location.topRightCorner,
+                            code.location.bottomLeftCorner, code.location.bottomRightCorner).y;
+      const boxWidth = maxX - minX;
+      const boxHeight = maxY - minY;
 
-          const centerTol = 0.15 * vh;
-          const sizeTol = 0.15 * vh;
-          const boxCenterX = vw / 2;
-          const boxCenterY = vh / 2;
-          const desiredHeight = 0.6 * vh;
+      overlayBox.style.left = `${minX}px`;
+      overlayBox.style.top = `${minY}px`;
+      overlayBox.style.width = `${boxWidth}px`;
+      overlayBox.style.height = `${boxHeight}px`;
 
-          if (Math.abs(qrCenterX - boxCenterX) < centerTol &&
-              Math.abs(qrCenterY - boxCenterY) < centerTol &&
-              Math.abs(qrHeight - desiredHeight) < sizeTol) {
-            alignmentOK = true;
-          }
-        }
+      // Check alignment: center within 20% of screen center, and height ~60% of canvas height
+      const cx = (minX + maxX) / 2;
+      const cy = (minY + maxY) / 2;
+      const tolerance = 0.15;
 
-        statusQR.classList.toggle('ok', foundMatch);
-        statusAlign.classList.toggle('ok', alignmentOK);
+      const canvasCenterX = canvas.width / 2;
+      const canvasCenterY = canvas.height / 2;
+      const heightRatio = boxHeight / canvas.height;
 
-        const allOK = checkOrientation() && foundMatch && alignmentOK;
+      const isCentered = Math.abs(cx - canvasCenterX) < canvas.width * tolerance &&
+                         Math.abs(cy - canvasCenterY) < canvas.height * tolerance;
+      const isSized = heightRatio > 0.5 && heightRatio < 0.7;
 
-        if (allOK && !captured && captureCount < 3) {
-          captured = true;
-          flashScreen();
-          const img = new Image();
-          img.className = "thumb";
-          img.src = canvas.toDataURL("image/png");
-          capturedContainer.appendChild(img);
-          captureCount++;
-
-          if (captureCount < 3) {
-            setTimeout(() => { captured = false; }, 2000); // allow for next capture
-          }
-        }
-      }
-
-      requestAnimationFrame(scanLoop);
+      aligned = isCentered && isSized;
+    } else {
+      overlayBox.style.width = overlayBox.style.height = '0px';
     }
-  </script>
+
+    setIndicator(qrFoundInd, found);
+    setIndicator(alignedInd, aligned);
+
+    if (found && aligned && isLandscape && !displayCanvas.dataset.captured) {
+      captureImage();
+      displayCanvas.dataset.captured = "true";
+    }
+
+    requestAnimationFrame(tick);
+  }
+
+  function captureImage() {
+    let dctx = displayCanvas.getContext("2d");
+    displayCanvas.width = canvas.width;
+    displayCanvas.height = canvas.height;
+    dctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    displayCanvas.style.display = "block";
+  }
+</script>
 </body>
 </html>
