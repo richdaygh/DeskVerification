@@ -9,7 +9,7 @@
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
         }
         
         body {
@@ -26,7 +26,7 @@
             height: 100%;
         }
         
-        header {
+        .header {
             position: absolute;
             top: 0;
             left: 0;
@@ -36,11 +36,6 @@
             padding: 0.5rem;
             text-align: center;
             z-index: 10;
-        }
-        
-        h1 {
-            font-size: 1.2rem;
-            font-weight: bold;
         }
         
         .status-indicators {
@@ -64,23 +59,17 @@
             color: white;
         }
         
-        .indicator-success {
+        .success-icon {
             color: #10b981;
-        }
-        
-        .indicator-error {
-            color: #ef4444;
-        }
-        
-        .indicator-icon {
             margin-right: 0.5rem;
         }
         
-        .indicator-text {
-            font-size: 0.75rem;
+        .error-icon {
+            color: #ef4444;
+            margin-right: 0.5rem;
         }
         
-        #video-container {
+        .video-container {
             position: absolute;
             top: 0;
             left: 0;
@@ -129,7 +118,7 @@
             margin: 0.25rem 0;
         }
         
-        .camera-status {
+        .status-bar {
             position: absolute;
             bottom: 1rem;
             left: 0;
@@ -173,11 +162,11 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            opacity: 0;
+            display: none;
         }
         
         .arrow.visible {
-            opacity: 1;
+            display: flex;
         }
         
         .arrow-left {
@@ -216,12 +205,12 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            opacity: 0;
+            display: none;
             z-index: 6;
         }
         
         .zoom-indicator.visible {
-            opacity: 1;
+            display: flex;
         }
         
         #captured-view {
@@ -236,6 +225,7 @@
             align-items: center;
             justify-content: center;
             z-index: 20;
+            display: none;
         }
         
         #captured-view h2 {
@@ -272,10 +262,6 @@
             background-color: #10b981;
         }
         
-        .hidden {
-            display: none !important;
-        }
-        
         body.fullscreen .instructions {
             display: none;
         }
@@ -283,9 +269,9 @@
 </head>
 <body>
     <div class="container">
-        <header>
+        <div class="header">
             <h1>Workspace Validation</h1>
-        </header>
+        </div>
         
         <button id="fullscreen-button" class="fullscreen-button">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -295,32 +281,32 @@
         
         <div class="status-indicators">
             <div id="landscape-indicator" class="indicator">
-                <svg xmlns="http://www.w3.org/2000/svg" class="indicator-icon indicator-error" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg xmlns="http://www.w3.org/2000/svg" class="error-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="10"></circle>
                     <line x1="15" y1="9" x2="9" y2="15"></line>
                     <line x1="9" y1="9" x2="15" y2="15"></line>
                 </svg>
-                <span class="indicator-text">Landscape</span>
+                <span>Landscape</span>
             </div>
             <div id="qr-indicator" class="indicator">
-                <svg xmlns="http://www.w3.org/2000/svg" class="indicator-icon indicator-error" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg xmlns="http://www.w3.org/2000/svg" class="error-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="10"></circle>
                     <line x1="15" y1="9" x2="9" y2="15"></line>
                     <line x1="9" y1="9" x2="15" y2="15"></line>
                 </svg>
-                <span class="indicator-text">QR Code</span>
+                <span>QR Code</span>
             </div>
             <div id="alignment-indicator" class="indicator">
-                <svg xmlns="http://www.w3.org/2000/svg" class="indicator-icon indicator-error" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg xmlns="http://www.w3.org/2000/svg" class="error-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <circle cx="12" cy="12" r="10"></circle>
                     <line x1="15" y1="9" x2="9" y2="15"></line>
                     <line x1="9" y1="9" x2="15" y2="15"></line>
                 </svg>
-                <span class="indicator-text">Aligned</span>
+                <span>Aligned</span>
             </div>
         </div>
         
-        <div id="video-container">
+        <div class="video-container">
             <video id="video" autoplay playsinline></video>
             <canvas id="canvas"></canvas>
         </div>
@@ -375,7 +361,7 @@
             </ul>
         </div>
         
-        <div class="camera-status">
+        <div class="status-bar">
             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem;">
                 <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path>
                 <circle cx="12" cy="13" r="3"></circle>
@@ -384,7 +370,7 @@
         </div>
     </div>
     
-    <div id="captured-view" class="hidden">
+    <div id="captured-view">
         <h2>Workspace Captured!</h2>
         <img id="captured-image" alt="Captured Workspace">
         <div class="button-group">
@@ -424,11 +410,6 @@
             
             let stream = null;
             let intervalId = null;
-            
-            // Success/error icons
-            const successIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="indicator-icon indicator-success"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>';
-            
-            const errorIcon = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="indicator-icon indicator-error"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>';
             
             // Create ghost QR code
             function createGhostQRCode(size) {
@@ -476,7 +457,7 @@
             fullscreenButton.addEventListener('click', function() {
                 if (!document.fullscreenElement) {
                     document.documentElement.requestFullscreen().catch(err => {
-                        console.error(`Error attempting to enable fullscreen: ${err.message}`);
+                        console.error("Error attempting to enable fullscreen:", err);
                     });
                 } else {
                     if (document.exitFullscreen) {
@@ -505,11 +486,20 @@
             }
             
             // Update status indicator
-            function updateIndicator(element, isSuccess, text) {
+            function updateIndicator(element, isSuccess) {
                 if (isSuccess) {
-                    element.innerHTML = successIcon + `<span class="indicator-text">${text}</span>`;
+                    element.querySelector('svg').className = 'success-icon';
+                    element.querySelector('svg').innerHTML = `
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    `;
                 } else {
-                    element.innerHTML = errorIcon + `<span class="indicator-text">${text}</span>`;
+                    element.querySelector('svg').className = 'error-icon';
+                    element.querySelector('svg').innerHTML = `
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="15" y1="9" x2="9" y2="15"></line>
+                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                    `;
                 }
             }
             
@@ -543,44 +533,46 @@
             }
             
             // Start camera
-            async function startCamera() {
-                try {
-                    const constraints = {
+            function startCamera() {
+                if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                    navigator.mediaDevices.getUserMedia({
                         video: { 
                             facingMode: "environment",
                             width: { ideal: 1280 },
                             height: { ideal: 720 }
                         }
-                    };
-                    
-                    stream = await navigator.mediaDevices.getUserMedia(constraints);
-                    video.srcObject = stream;
-                    
-                    // Start processing frames when video is ready
-                    video.onloadedmetadata = function() {
-                        video.play();
-                        processFrames();
-                    };
-                } catch (err) {
-                    console.error("Error accessing camera:", err);
-                    statusText.textContent = "Camera error. Please check permissions.";
+                    })
+                    .then(function(mediaStream) {
+                        stream = mediaStream;
+                        video.srcObject = mediaStream;
+                        video.onloadedmetadata = function() {
+                            video.play();
+                            processFrames();
+                        };
+                    })
+                    .catch(function(err) {
+                        console.error("Error accessing camera:", err);
+                        statusText.textContent = "Camera error. Please check permissions.";
+                    });
+                } else {
+                    statusText.textContent = "Camera not supported in this browser.";
                 }
             }
             
             // Process video frames
             function processFrames() {
                 intervalId = setInterval(function() {
-                    // Set canvas dimensions to match video
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
-                    
                     if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                        // Set canvas dimensions to match video
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        
                         // Draw current frame to canvas
                         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                         
                         // Check if landscape
                         const isLandscape = canvas.width > canvas.height;
-                        updateIndicator(landscapeIndicator, isLandscape, "Landscape");
+                        updateIndicator(landscapeIndicator, isLandscape);
                         
                         // Hide all direction arrows by default
                         hideAllDirectionArrows();
@@ -606,7 +598,7 @@
                         
                         if (code && code.data === "1234") {
                             qrCodeFound = true;
-                            updateIndicator(qrIndicator, true, "QR Code");
+                            updateIndicator(qrIndicator, true);
                             
                             // Calculate QR code position and size
                             const qrLocation = code.location;
@@ -619,7 +611,7 @@
                             const qrCenterX = (topLeft.x + topRight.x + bottomLeft.x + bottomRight.x) / 4;
                             const qrCenterY = (topLeft.y + topRight.y + bottomLeft.y + bottomRight.y) / 4;
                             
-                            // Calculate QR code height (average of left and right sides)
+                            // Calculate QR code height
                             const leftHeight = Math.sqrt(Math.pow(bottomLeft.x - topLeft.x, 2) + Math.pow(bottomLeft.y - topLeft.y, 2));
                             const rightHeight = Math.sqrt(Math.pow(bottomRight.x - topRight.x, 2) + Math.pow(bottomRight.y - topRight.y, 2));
                             const qrHeight = (leftHeight + rightHeight) / 2;
@@ -645,7 +637,7 @@
                             const isPositionedCorrectlyY = Math.abs(qrCenterYPercent - targetCenterYPercent) < positionTolerance;
                             
                             qrCodeAligned = isSizedCorrectly && isPositionedCorrectlyX && isPositionedCorrectlyY;
-                            updateIndicator(alignmentIndicator, qrCodeAligned, "Aligned");
+                            updateIndicator(alignmentIndicator, qrCodeAligned);
                             
                             // Draw QR code outline
                             ctx.beginPath();
@@ -681,4 +673,16 @@
                                 // Size guidance
                                 if (qrHeightPercent < 0.4 - sizeTolerance) {
                                     zoomIn.classList.add('visible');
-                                    statusText.textContent = "
+                                    statusText.textContent = "Move closer";
+                                } else if (qrHeightPercent > 0.4 + sizeTolerance) {
+                                    zoomOut.classList.add('visible');
+                                    statusText.textContent = "Move farther away";
+                                }
+                            } else {
+                                statusText.textContent = "Perfect! Capturing...";
+                                captureImage();
+                            }
+                        } else {
+                            updateIndicator(qrIndicator, false);
+                            updateIndicator(alignmentIndicator, false);
+                            statusText.textContent
