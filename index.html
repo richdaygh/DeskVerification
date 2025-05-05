@@ -1,175 +1,448 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Workspace Capture POC (Debug)</title>
-  <style>
-    html, body {
-      margin: 0;
-      padding: 0;
-      background: black;
-      overflow: hidden;
-    }
-    video, canvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      object-fit: cover;
-    }
-    #indicators {
-      position: absolute;
-      top: 10px;
-      width: 100%;
-      display: flex;
-      justify-content: space-around;
-      z-index: 2;
-    }
-    .indicator {
-      padding: 10px 20px;
-      font-size: 20px;
-      font-weight: bold;
-      border-radius: 8px;
-      color: white;
-    }
-    .good { background: green; }
-    .bad { background: red; }
-    #ghostOverlay {
-      position: absolute;
-      border: 2px dashed white;
-      opacity: 0.4;
-      z-index: 2;
-    }
-    #debugBox {
-      position: absolute;
-      top: 60px;
-      left: 10px;
-      color: lime;
-      font-family: monospace;
-      font-size: 14px;
-      background: rgba(0,0,0,0.6);
-      padding: 8px;
-      z-index: 3;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proctoring Workspace Validator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        
+        body {
+            background-color: #f3f4f6;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        h1 {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+        
+        .card {
+            background-color: white;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            width: 100%;
+        }
+        
+        .status-indicators {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .indicator {
+            display: flex;
+            align-items: center;
+            padding: 0.5rem;
+            border-radius: 0.375rem;
+        }
+        
+        .indicator.success {
+            background-color: #dcfce7;
+        }
+        
+        .indicator.error {
+            background-color: #fee2e2;
+        }
+        
+        .indicator-icon {
+            margin-right: 0.5rem;
+        }
+        
+        .indicator-text {
+            font-size: 0.875rem;
+        }
+        
+        .video-container {
+            position: relative;
+            width: 100%;
+            background-color: black;
+            border-radius: 0.5rem;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+        
+        video {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .instructions {
+            font-size: 0.875rem;
+            padding: 0.5rem;
+            background-color: #f3f4f6;
+            border-radius: 0.375rem;
+            margin-bottom: 1rem;
+        }
+        
+        .instructions ul {
+            list-style-type: disc;
+            padding-left: 1.25rem;
+        }
+        
+        .instructions li {
+            margin: 0.25rem 0;
+        }
+        
+        .camera-status {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #6b7280;
+        }
+        
+        .captured-view {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .captured-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 0.375rem;
+            margin-bottom: 1rem;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 1rem;
+        }
+        
+        button {
+            background-color: #3b82f6;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 0.375rem;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        
+        button:hover {
+            background-color: #2563eb;
+        }
+        
+        button.success {
+            background-color: #10b981;
+        }
+        
+        button.success:hover {
+            background-color: #059669;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
 </head>
 <body>
-  <video id="video" autoplay playsinline></video>
-  <canvas id="canvas"></canvas>
-  <div id="indicators">
-    <div id="landscapeIndicator" class="indicator bad">Landscape</div>
-    <div id="qrIndicator" class="indicator bad">QR Found</div>
-    <div id="alignIndicator" class="indicator bad">Aligned</div>
-  </div>
-  <div id="ghostOverlay"></div>
-  <div id="debugBox">Debug Info</div>
+    <div class="container">
+        <h1>Workspace Validation</h1>
+        
+        <div id="camera-view" class="card">
+            <div class="text-center">
+                <p style="text-align: center; font-size: 1.125rem; margin-bottom: 0.5rem;">Please capture your workspace:</p>
+                <div class="status-indicators">
+                    <div id="landscape-indicator" class="indicator error">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="indicator-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #ef4444;">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="15" y1="9" x2="9" y2="15"></line>
+                            <line x1="9" y1="9" x2="15" y2="15"></line>
+                        </svg>
+                        <span class="indicator-text">Landscape Mode</span>
+                    </div>
+                    <div id="qr-indicator" class="indicator error">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="indicator-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #ef4444;">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="15" y1="9" x2="9" y2="15"></line>
+                            <line x1="9" y1="9" x2="15" y2="15"></line>
+                        </svg>
+                        <span class="indicator-text">QR Code Found</span>
+                    </div>
+                    <div id="alignment-indicator" class="indicator error">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="indicator-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #ef4444;">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="15" y1="9" x2="9" y2="15"></line>
+                            <line x1="9" y1="9" x2="15" y2="15"></line>
+                        </svg>
+                        <span class="indicator-text">Aligned Correctly</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="video-container">
+                <video id="video" autoplay playsinline></video>
+                <canvas id="canvas"></canvas>
+            </div>
+            
+            <div class="instructions">
+                <p>Instructions:</p>
+                <ul>
+                    <li>Hold your phone in landscape mode</li>
+                    <li>Make sure the QR code from your computer screen is visible</li>
+                    <li>Align the QR code with the blue square</li>
+                    <li>The photo will be taken automatically when properly aligned</li>
+                </ul>
+            </div>
+            
+            <div class="camera-status">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem; color: #6b7280;">
+                    <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"></path>
+                    <circle cx="12" cy="13" r="3"></circle>
+                </svg>
+                <span>Camera active - waiting for alignment...</span>
+            </div>
+        </div>
+        
+        <div id="captured-view" class="card hidden">
+            <div class="captured-view">
+                <h2 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 0.5rem;">Workspace Captured!</h2>
+                <img id="captured-image" class="captured-image" alt="Captured Workspace">
+                <div class="button-group">
+                    <button id="retake-button">Retake Photo</button>
+                    <button id="continue-button" class="success">Continue to Exam</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-  <script type="module">
-    import { BrowserMultiFormatReader } from 'https://cdn.jsdelivr.net/npm/@zxing/browser@0.0.10/+esm';
-
-    const video = document.getElementById('video');
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const ghostOverlay = document.getElementById('ghostOverlay');
-    const debugBox = document.getElementById('debugBox');
-
-    const reader = new BrowserMultiFormatReader();
-
-    function updateIndicators(landscape, qrFound, aligned) {
-      document.getElementById('landscapeIndicator').className = 'indicator ' + (landscape ? 'good' : 'bad');
-      document.getElementById('qrIndicator').className = 'indicator ' + (qrFound ? 'good' : 'bad');
-      document.getElementById('alignIndicator').className = 'indicator ' + (aligned ? 'good' : 'bad');
-    }
-
-    function updateGhostBox(w, h) {
-      const size = h * 0.4;
-      ghostOverlay.style.width = size + 'px';
-      ghostOverlay.style.height = size + 'px';
-      ghostOverlay.style.left = ((w - size) / 2) + 'px';
-      ghostOverlay.style.top = ((h - size) / 2) + 'px';
-    }
-
-    async function initCamera() {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' },
-        audio: false
-      });
-      video.srcObject = stream;
-
-      video.onloadedmetadata = () => {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        requestAnimationFrame(scanLoop);
-      };
-    }
-
-    function drawQRBox(result) {
-      if (!result?.resultPoints) return;
-      ctx.strokeStyle = 'yellow';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      result.resultPoints.forEach((pt, i) => {
-        if (i === 0) ctx.moveTo(pt.x, pt.y);
-        else ctx.lineTo(pt.x, pt.y);
-      });
-      ctx.closePath();
-      ctx.stroke();
-    }
-
-    async function scanLoop() {
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const isLandscape = canvas.width > canvas.height;
-      let qrFound = false;
-      let aligned = false;
-      let debugText = "";
-
-      try {
-        const result = await reader.decodeFromVideoElement(video);
-        const text = result.getText();
-        qrFound = (text === "1234");
-
-        const points = result.resultPoints;
-        const minX = Math.min(...points.map(p => p.x));
-        const maxX = Math.max(...points.map(p => p.x));
-        const minY = Math.min(...points.map(p => p.y));
-        const maxY = Math.max(...points.map(p => p.y));
-
-        const qrWidth = maxX - minX;
-        const qrHeight = maxY - minY;
-        const qrCenterX = minX + qrWidth / 2;
-        const qrCenterY = minY + qrHeight / 2;
-
-        const targetSize = canvas.height * 0.4;
-        const targetX = canvas.width / 2;
-        const targetY = canvas.height / 2;
-
-        const withinSize = Math.abs(qrHeight - targetSize) < targetSize * 0.2;
-        const centered = Math.abs(qrCenterX - targetX) < targetSize * 0.25 && Math.abs(qrCenterY - targetY) < targetSize * 0.25;
-        aligned = qrFound && withinSize && centered;
-
-        drawQRBox(result);
-
-        debugText = `Canvas: ${canvas.width}x${canvas.height}
-QR Center: (${qrCenterX.toFixed(1)}, ${qrCenterY.toFixed(1)})
-QR Size: ${qrWidth.toFixed(1)} x ${qrHeight.toFixed(1)}
-Target Size: ${targetSize.toFixed(1)}
-Centered: ${centered}
-Within Size: ${withinSize}
-`;
-      } catch (e) {
-        debugText = "No QR detected.";
-      }
-
-      updateIndicators(isLandscape, qrFound, aligned);
-      updateGhostBox(canvas.width, canvas.height);
-      debugBox.textContent = debugText;
-
-      requestAnimationFrame(scanLoop);
-    }
-
-    initCamera();
-  </script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const video = document.getElementById('video');
+            const canvas = document.getElementById('canvas');
+            const ctx = canvas.getContext('2d');
+            const capturedImage = document.getElementById('captured-image');
+            const cameraView = document.getElementById('camera-view');
+            const capturedView = document.getElementById('captured-view');
+            const retakeButton = document.getElementById('retake-button');
+            const continueButton = document.getElementById('continue-button');
+            
+            // Status indicators
+            const landscapeIndicator = document.getElementById('landscape-indicator');
+            const qrIndicator = document.getElementById('qr-indicator');
+            const alignmentIndicator = document.getElementById('alignment-indicator');
+            
+            let stream = null;
+            let intervalId = null;
+            
+            // Success indicator SVG
+            const successSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #10b981;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>`;
+            
+            // Error indicator SVG
+            const errorSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #ef4444;"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>`;
+            
+            // Start camera
+            async function startCamera() {
+                try {
+                    const constraints = {
+                        video: { 
+                            facingMode: "environment",
+                            width: { ideal: 1280 },
+                            height: { ideal: 720 }
+                        }
+                    };
+                    
+                    stream = await navigator.mediaDevices.getUserMedia(constraints);
+                    video.srcObject = stream;
+                    
+                    // Wait for video to be ready
+                    video.onloadedmetadata = () => {
+                        // Start processing frames
+                        processFrames();
+                    };
+                } catch (err) {
+                    console.error("Error accessing camera:", err);
+                    alert("Error accessing camera. Please make sure you've granted camera permissions.");
+                }
+            }
+            
+            // Process video frames
+            function processFrames() {
+                intervalId = setInterval(() => {
+                    // Set canvas dimensions to match video
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    
+                    if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                        // Draw current frame to canvas
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        
+                        // Get image data for QR code scanning
+                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        
+                        // Check if landscape
+                        const isLandscape = canvas.width > canvas.height;
+                        updateIndicator(landscapeIndicator, isLandscape, "Landscape Mode");
+                        
+                        // Scan for QR code
+                        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                            inversionAttempts: "dontInvert",
+                        });
+                        
+                        let qrCodeFound = false;
+                        let qrCodeAligned = false;
+                        
+                        if (code && code.data === "1234") {
+                            qrCodeFound = true;
+                            updateIndicator(qrIndicator, true, "QR Code Found");
+                            
+                            // Calculate QR code position and size
+                            const qrLocation = code.location;
+                            const topLeft = qrLocation.topLeft;
+                            const topRight = qrLocation.topRight;
+                            const bottomLeft = qrLocation.bottomLeft;
+                            
+                            // Calculate the center position of the QR code
+                            const qrCenterX = (topLeft.x + topRight.x) / 2 / canvas.width;
+                            const qrCenterY = (topLeft.y + bottomLeft.y) / 2 / canvas.height;
+                            
+                            // Calculate QR code height as percentage of canvas height
+                            const qrHeight = Math.abs(bottomLeft.y - topLeft.y) / canvas.height;
+                            
+                            // Check if QR is ~40% of the height and positioned at ~60% from the top
+                            const isSizedCorrectly = Math.abs(qrHeight - 0.4) < 0.1;
+                            const isPositionedCorrectly = Math.abs(qrCenterY - 0.6) < 0.1;
+                            const isCentered = Math.abs(qrCenterX - 0.5) < 0.1;
+                            
+                            qrCodeAligned = isSizedCorrectly && isPositionedCorrectly && isCentered;
+                            updateIndicator(alignmentIndicator, qrCodeAligned, "Aligned Correctly");
+                            
+                            // Draw QR code outline
+                            ctx.beginPath();
+                            ctx.moveTo(qrLocation.topLeftCorner.x, qrLocation.topLeftCorner.y);
+                            ctx.lineTo(qrLocation.topRightCorner.x, qrLocation.topRightCorner.y);
+                            ctx.lineTo(qrLocation.bottomRightCorner.x, qrLocation.bottomRightCorner.y);
+                            ctx.lineTo(qrLocation.bottomLeftCorner.x, qrLocation.bottomLeftCorner.y);
+                            ctx.closePath();
+                            ctx.lineWidth = 4;
+                            ctx.strokeStyle = "#FFFF00";
+                            ctx.stroke();
+                        } else {
+                            updateIndicator(qrIndicator, false, "QR Code Found");
+                            updateIndicator(alignmentIndicator, false, "Aligned Correctly");
+                        }
+                        
+                        // Draw border based on orientation
+                        ctx.strokeStyle = isLandscape ? "#00FF00" : "#FF0000";
+                        ctx.lineWidth = 5;
+                        ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
+                        
+                        // Draw alignment guide
+                        drawAlignmentGuide(ctx, canvas.width, canvas.height);
+                        
+                        // Check if all requirements are met for auto-capture
+                        if (isLandscape && qrCodeFound && qrCodeAligned) {
+                            // Auto-capture the image
+                            captureImage();
+                        }
+                    }
+                }, 200);
+            }
+            
+            // Draw alignment guide
+            function drawAlignmentGuide(ctx, width, height) {
+                const boxHeight = height * 0.4; // 40% of height
+                const boxWidth = boxHeight; // Square box
+                const boxX = (width - boxWidth) / 2; // Centered horizontally
+                const boxY = (height * 0.6) - (boxHeight / 2); // Center at 60% from top
+                
+                ctx.strokeStyle = "#00FFFF";
+                ctx.lineWidth = 3;
+                ctx.setLineDash([10, 10]);
+                ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+                ctx.setLineDash([]);
+            }
+            
+            // Update indicator status
+            function updateIndicator(element, isSuccess, text) {
+                if (isSuccess) {
+                    element.className = "indicator success";
+                    element.innerHTML = successSvg + `<span class="indicator-text">${text}</span>`;
+                } else {
+                    element.className = "indicator error";
+                    element.innerHTML = errorSvg + `<span class="indicator-text">${text}</span>`;
+                }
+            }
+            
+            // Capture image
+            function captureImage() {
+                // Stop processing frames
+                clearInterval(intervalId);
+                
+                // Get the image data
+                const imageData = canvas.toDataURL("image/jpeg");
+                
+                // Display the captured image
+                capturedImage.src = imageData;
+                
+                // Show the captured view, hide the camera view
+                cameraView.classList.add("hidden");
+                capturedView.classList.remove("hidden");
+                
+                // Stop camera
+                if (stream) {
+                    stream.getTracks().forEach(track => track.stop());
+                }
+            }
+            
+            // Retake button click handler
+            retakeButton.addEventListener("click", () => {
+                // Hide the captured view, show the camera view
+                capturedView.classList.add("hidden");
+                cameraView.classList.remove("hidden");
+                
+                // Reset indicators
+                updateIndicator(landscapeIndicator, false, "Landscape Mode");
+                updateIndicator(qrIndicator, false, "QR Code Found");
+                updateIndicator(alignmentIndicator, false, "Aligned Correctly");
+                
+                // Restart camera
+                startCamera();
+            });
+            
+            // Continue button click handler
+            continueButton.addEventListener("click", () => {
+                // Here you would normally submit the image to your server
+                // and redirect the user back to the exam
+                alert("Image captured successfully! In a real implementation, you would be redirected back to your exam.");
+            });
+            
+            // Start the camera when the page loads
+            startCamera();
+        });
+    </script>
 </body>
 </html>
