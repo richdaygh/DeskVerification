@@ -1,174 +1,227 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Workspace Documentation</title>
+  <meta charset="UTF-8">
+  <title>Workspace Capture</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <style>
-    body {
-      font-family: sans-serif;
+    body, html {
       margin: 0;
       padding: 0;
+      background: black;
+      overflow: hidden;
+      color: white;
+      font-family: sans-serif;
+    }
+
+    #status-bar {
       display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    #video-container {
-      position: relative;
-      width: 100%;
-      max-width: 600px;
-      margin-top: 10px;
-    }
-    video {
-      width: 100%;
-      height: auto;
-      border: 1px solid #ccc;
-    }
-    .marker {
+      justify-content: space-around;
+      background: rgba(0,0,0,0.7);
+      padding: 10px;
+      font-size: 14px;
       position: absolute;
-      border: 4px solid red;
-      width: 40%;
-      height: 40%;
-      top: 30%;
-      left: 30%;
-      box-sizing: border-box;
+      width: 100%;
+      top: 0;
+      z-index: 10;
+    }
+
+    .status {
+      padding: 5px 10px;
+      border-radius: 5px;
+      background: red;
+    }
+
+    .status.ok {
+      background: green;
+    }
+
+    #video {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      top: 0;
+      left: 0;
+    }
+
+    #alignment-box {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 80vw;
+      height: 60vh;
+      transform: translate(-50%, -50%);
+      border: 4px dashed red;
+      z-index: 5;
+      background: rgba(255, 255, 255, 0.05);
+      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAqUlEQVR4nO3XsQ0AMAwEwVn/p9uhTBAiMLvpNhxHyYtiK7lmn8Nid1x9apX1BQAAAAAAAAAAAABgGc0A+yJtcI0zDmwHvVrd3mFgw43hI8NhYMC4eDxYMC4eDxYMC4eDxYMC4eDxYMC4eDxYMC4eDxYMC4eDxYMC4eDxYMC4eDxYMC4eDxYMC4eDxYMC4eDxYMC4eLwUKh80YTGV9AoAAAAASUVORK5CYII=");
+      background-repeat: no-repeat;
+      background-position: center;
+      background-size: 60%;
       pointer-events: none;
     }
-    #status {
-      margin-top: 10px;
-      font-size: 1.2em;
-    }
-    #captures {
-      margin-top: 20px;
+
+    #captured {
+      position: absolute;
+      bottom: 10px;
+      width: 100%;
       display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
       justify-content: center;
+      gap: 10px;
+      z-index: 20;
     }
-    .capture-container {
+
+    .thumb {
+      width: 30vw;
+      border: 2px solid white;
+    }
+
+    #flash {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: white;
+      opacity: 0;
+      transition: opacity 0.2s;
+      z-index: 50;
+      pointer-events: none;
+    }
+
+    #rotate-warning {
+      display: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      background: rgba(0,0,0,0.9);
+      color: white;
+      width: 100%;
+      height: 100%;
+      z-index: 100;
+      justify-content: center;
+      align-items: center;
       text-align: center;
+      font-size: 24px;
+      padding: 20px;
     }
-    .capture-container img {
-      width: 150px;
-      height: auto;
-      border: 1px solid #ccc;
+
+    #rotate-warning.show {
+      display: flex;
     }
   </style>
 </head>
 <body>
-
-  <h2>Step Back and Align the QR Code</h2>
-  <div id="video-container">
-    <video id="video" autoplay playsinline></video>
-    <div class="marker" id="marker"></div>
+  <div id="status-bar">
+    <div id="status-orientation" class="status">Landscape</div>
+    <div id="status-qr" class="status">QR Code</div>
+    <div id="status-align" class="status">Alignment</div>
   </div>
 
-  <div id="status">Looking for QR code: <strong>1234</strong></div>
+  <video id="video" autoplay muted playsinline></video>
+  <div id="alignment-box"></div>
+  <div id="captured"></div>
+  <div id="flash"></div>
+  <div id="rotate-warning">Please rotate your device to landscape mode to proceed.</div>
 
-  <div id="captures">
-    <div class="capture-container" id="center-capture">
-      <strong>Center</strong><br />
-    </div>
-    <div class="capture-container" id="left-capture">
-      <strong>Left</strong><br />
-    </div>
-    <div class="capture-container" id="right-capture">
-      <strong>Right</strong><br />
-    </div>
-  </div>
+  <canvas id="canvas" style="display:none;"></canvas>
 
-  <script type="module">
-    import QrScanner from "https://cdn.jsdelivr.net/npm/qr-scanner@1.4.2/qr-scanner.min.js";
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const statusOrientation = document.getElementById('status-orientation');
+    const statusQR = document.getElementById('status-qr');
+    const statusAlign = document.getElementById('status-align');
+    const flash = document.getElementById('flash');
+    const rotateWarning = document.getElementById('rotate-warning');
+    const capturedContainer = document.getElementById('captured');
 
-    const correctCode = "1234";
-    const video = document.getElementById("video");
-    const status = document.getElementById("status");
-    const marker = document.getElementById("marker");
-    const captured = { center: false, left: false, right: false };
-    let currentStage = "center";
-    let scanningPaused = false;
+    let captureCount = 0;
+    let captured = false;
 
-    function moveMarker(position) {
-      if (position === "center") {
-        marker.style.left = "30%";
-      } else if (position === "left") {
-        marker.style.left = "5%";
-      } else if (position === "right") {
-        marker.style.left = "65%";
-      }
+    function checkOrientation() {
+      const isLandscape = window.innerWidth > window.innerHeight;
+      rotateWarning.classList.toggle('show', !isLandscape);
+      statusOrientation.classList.toggle('ok', isLandscape);
+      return isLandscape;
     }
 
-    function captureImage(position) {
-      const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const img = new Image();
-      img.src = canvas.toDataURL("image/jpeg");
-      document.getElementById(`${position}-capture`).appendChild(img);
-      captured[position] = true;
+    window.addEventListener('resize', checkOrientation);
+    checkOrientation();
+
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(stream => {
+      video.srcObject = stream;
+      video.onloadedmetadata = () => {
+        video.play();
+        scanLoop();
+      };
+    }).catch(err => {
+      alert("Camera access failed: " + err);
+    });
+
+    function flashScreen() {
+      flash.style.opacity = 1;
+      setTimeout(() => flash.style.opacity = 0, 200);
     }
 
-    const scanner = new QrScanner(
-      video,
-      async (result) => {
-        if (scanningPaused) return;
-
-        const text = result.data.trim();
-        const box = result.cornerPoints;
-        const width = Math.hypot(box[0].x - box[1].x, box[0].y - box[1].y);
-        const height = Math.hypot(box[1].x - box[2].x, box[1].y - box[2].y);
+    function scanLoop() {
+      if (video.readyState === video.HAVE_ENOUGH_DATA) {
         const vw = video.videoWidth;
         const vh = video.videoHeight;
+        canvas.width = vw;
+        canvas.height = vh;
+        ctx.drawImage(video, 0, 0, vw, vh);
+        const imageData = ctx.getImageData(0, 0, vw, vh);
+        const code = jsQR(imageData.data, vw, vh, { inversionAttempts: "dontInvert" });
 
-        const widthRatio = width / vw;
-        const heightRatio = height / vh;
-        const isFarEnough = widthRatio < 0.3 && heightRatio < 0.3;
+        let foundMatch = false;
+        let alignmentOK = false;
 
-        if (text === correctCode && isFarEnough) {
-          if (!captured[currentStage]) {
-            scanningPaused = true;
+        if (code && code.data === "1234") {
+          foundMatch = true;
+          const qrCenterX = (code.location.topLeftCorner.x + code.location.bottomRightCorner.x) / 2;
+          const qrCenterY = (code.location.topLeftCorner.y + code.location.bottomRightCorner.y) / 2;
+          const qrHeight = Math.hypot(
+            code.location.topLeftCorner.y - code.location.bottomLeftCorner.y,
+            code.location.topLeftCorner.x - code.location.bottomLeftCorner.x
+          );
 
-            captureImage(currentStage);
-            status.textContent = `✅ ${currentStage.charAt(0).toUpperCase() + currentStage.slice(1)} view captured`;
+          const centerTol = 0.15 * vh;
+          const sizeTol = 0.15 * vh;
+          const boxCenterX = vw / 2;
+          const boxCenterY = vh / 2;
+          const desiredHeight = 0.6 * vh;
 
-            await new Promise((res) => setTimeout(res, 2500)); // wait 2.5 seconds
-
-            if (currentStage === "center") {
-              currentStage = "left";
-              moveMarker("left");
-              status.textContent = "📷 Please now capture the LEFT view.";
-            } else if (currentStage === "left") {
-              currentStage = "right";
-              moveMarker("right");
-              status.textContent = "📷 Please now capture the RIGHT view.";
-            } else if (currentStage === "right") {
-              status.textContent = "🎉 All views captured!";
-              scanner.stop();
-              document.getElementById("video-container").style.display = "none";
-              return;
-            }
-
-            scanningPaused = false;
+          if (Math.abs(qrCenterX - boxCenterX) < centerTol &&
+              Math.abs(qrCenterY - boxCenterY) < centerTol &&
+              Math.abs(qrHeight - desiredHeight) < sizeTol) {
+            alignmentOK = true;
           }
-        } else if (text === correctCode) {
-          status.textContent = "⚠️ Please step back to show more of the workspace.";
-        } else {
-          status.textContent = "❌ QR not detected or invalid.";
         }
-      },
-      { returnDetailedScanResult: true }
-    );
 
-    QrScanner.hasCamera().then((hasCamera) => {
-      if (hasCamera) {
-        scanner.start();
-        moveMarker(currentStage);
-      } else {
-        status.textContent = "🚫 No camera found.";
+        statusQR.classList.toggle('ok', foundMatch);
+        statusAlign.classList.toggle('ok', alignmentOK);
+
+        const allOK = checkOrientation() && foundMatch && alignmentOK;
+
+        if (allOK && !captured && captureCount < 3) {
+          captured = true;
+          flashScreen();
+          const img = new Image();
+          img.className = "thumb";
+          img.src = canvas.toDataURL("image/png");
+          capturedContainer.appendChild(img);
+          captureCount++;
+
+          if (captureCount < 3) {
+            setTimeout(() => { captured = false; }, 2000); // allow for next capture
+          }
+        }
       }
-    });
+
+      requestAnimationFrame(scanLoop);
+    }
   </script>
 </body>
 </html>
