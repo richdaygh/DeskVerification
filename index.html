@@ -25,8 +25,8 @@
       position: absolute;
       top: 50%;
       left: 50%;
-      width: 60vh;
-      height: 60vh;
+      width: 40vh;
+      height: 40vh;
       transform: translate(-50%, -50%);
       border: 4px dashed white;
       box-sizing: border-box;
@@ -213,9 +213,9 @@
 
         const centered = Math.abs(cx - centerX) < centerTol && Math.abs(cy - centerY) < centerTol;
 
-        // Check if QR height is about 50–70% of canvas height
+        // Check if QR height is about 35–45% of canvas height
         const heightRatio = boxHeight / canvas.height;
-        const sizeOK = heightRatio > 0.5 && heightRatio < 0.7;
+        const sizeOK = heightRatio > 0.35 && heightRatio < 0.45;
 
         isAligned = centered && sizeOK;
 
